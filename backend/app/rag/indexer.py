@@ -47,7 +47,7 @@ class DocumentIndexer:
                 text.append(para.text)
         return "\n".join(text)
 
-    def chunk_text(self, text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]:
+    def chunk_text(self, text: str, chunk_size: int = 1000, overlap: int = 50) -> List[str]:
         """
         Divide texto en chunks con overlap
 
@@ -69,7 +69,7 @@ class DocumentIndexer:
     def index_documents(self,
                        data_path: str,
                        docs_path: str = None,
-                       chunk_size: int = 500,
+                       chunk_size: int = 1000,
                        chunk_overlap: int = 50) -> Dict:
         """
         Indexa todos los documentos PDF/DOCX encontrados
@@ -140,9 +140,12 @@ class DocumentIndexer:
         embeddings = self.model.encode(all_chunks, show_progress_bar=True)
         embeddings = np.array(embeddings).astype('float32')
 
-        # 4. Crear índice FAISS
-        print("\n🔍 Creando índice FAISS...")
-        self.index = faiss.IndexFlatL2(self.dimension)
+        # Normalizar embeddings para usar cosine similarity (IndexFlatIP)
+        faiss.normalize_L2(embeddings)
+
+        # 4. Crear índice FAISS con Inner Product (equivalente a cosine con vectores normalizados)
+        print("\n🔍 Creando índice FAISS (Cosine Similarity)...")
+        self.index = faiss.IndexFlatIP(self.dimension)
         self.index.add(embeddings)
 
         # Guardar chunks de texto junto con metadata

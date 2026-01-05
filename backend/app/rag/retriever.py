@@ -34,6 +34,10 @@ class DocumentRetriever:
         query_embedding = self.model.encode([query])[0].astype('float32')
         query_embedding = np.array([query_embedding])
 
+        # Normalizar query embedding para cosine similarity
+        import faiss
+        faiss.normalize_L2(query_embedding)
+
         # Buscar en FAISS (buscamos más para filtrar después si es necesario)
         search_k = top_k * 3 if obra_social_filter else top_k
         distances, indices = self.indexer.index.search(query_embedding, search_k)
@@ -53,13 +57,15 @@ class DocumentRetriever:
             # Obtener el texto del chunk
             chunk_text = metadata.get('text', f"[Chunk {idx}]")
 
-            # Convertir distancia L2 a score de similitud (0-1, más alto = más similar)
-            similarity = 1.0 / (1.0 + distance)
+            # Con IndexFlatIP + vectores normalizados, 'distance' es directamente cosine similarity
+            # Rango: -1 (opuestos) a 1 (idénticos)
+            # Convertimos a rango 0-1 para mantener compatibilidad
+            similarity = (distance + 1.0) / 2.0
 
-            # FILTRO DE RELEVANCIA: Descartar chunks con score < 0.5
-            # Esto evita que se usen fragmentos irrelevantes (ej: tablas de "SI NO")
-            # Bajado de 0.6 a 0.5 porque filtraba chunks relevantes de documentación
-            if similarity < 0.5:
+            # FILTRO DE RELEVANCIA: Descartar chunks con score < 0.65
+            # Threshold ajustado para cosine similarity (más estricto que L2)
+            # 0.65 = similitud moderada, 0.8+ = muy similar
+            if similarity < 0.65:
                 continue
 
             results.append((chunk_text, metadata, similarity))

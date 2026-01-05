@@ -1,7 +1,3 @@
-
-# agente_hospital
-Agente Hospitalario - Grupo Pediátrico  Sistema conversacional RAG para personal administrativo del hospital Grupo Pediátrico.  Asiste en consultas sobre enrolamiento de pacientes y procedimientos de obras sociales.
-=======
 # Agente Hospitalario - Grupo Pediátrico
 
 Sistema conversacional RAG para personal administrativo del hospital Grupo Pediátrico.
@@ -170,7 +166,7 @@ Editá `backend/.env` para modificar parámetros:
 OLLAMA_MODEL=llama3.2          # Cambiar modelo (mistral, llama2, etc.)
 
 # RAG
-CHUNK_SIZE=500                 # Tamaño de chunks
+CHUNK_SIZE=1000                # Tamaño de chunks
 CHUNK_OVERLAP=50               # Overlap entre chunks
 TOP_K_RESULTS=5                # Cantidad de resultados a recuperar
 
