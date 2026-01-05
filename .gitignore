@@ -205,3 +205,51 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+
+
+# =====================
+# Claude / AI local
+# =====================
+.claude/
+
+# =====================
+# Data / RAG
+# =====================
+data/
+vectorstore/
+chroma/
+faiss_index/
+
+# =====================
+# n8n runtime
+# =====================
+n8n/
+.n8n/
+
+# =====================
+# Env / secrets
+# =====================
+.env
+.env.*
+secrets/
+*.key
+*.pem
+*.json
+
+# =====================
+# Python
+# =====================
+__pycache__/
+*.py[cod]
+venv/
+myenv/
+.venv/
+
+# =====================
+# OS / IDE
+# =====================
+.vscode/
+.idea/
+.DS_Store
+
