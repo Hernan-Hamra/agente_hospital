@@ -95,9 +95,11 @@ class EntityExtractor:
             if re.search(pattern, texto):
                 return value, 0.95
 
-        # 2. Buscar coincidencias parciales (substring)
+        # 2. Buscar coincidencias parciales (substring) - SOLO para obras sociales multi-palabra
         for key, value in self.OBRAS_SOCIALES.items():
-            if key in texto:
+            # Solo buscar substring si la clave tiene espacios (ej: "en salud", "swiss medical")
+            # Esto evita falsos positivos como "basicamente" → "asi"
+            if ' ' in key and key in texto:
                 return value, 0.75
 
         # 3. Fuzzy matching (tolera typos: "ennsalud" → "ensalud")

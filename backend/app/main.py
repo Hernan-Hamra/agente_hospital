@@ -5,6 +5,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 import os
+import time
+from datetime import datetime
 from dotenv import load_dotenv
 
 from app.models import QueryRequest, QueryResponse, HealthResponse, SourceDocument
@@ -145,28 +147,55 @@ async def query_agent(request: QueryRequest):
         )
 
     try:
+        # Timestamp inicio
+        timestamp_inicio = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        # Iniciar timer total
+        start_total = time.time()
+
         # 1. Extraer entidades del texto
+        start_entities = time.time()
         entities = entity_extractor.extract(request.pregunta)
+        time_entities = time.time() - start_entities
 
         # 2. Determinar obra social (prioridad: parámetro > entidad detectada)
         obra_social = request.obra_social if request.obra_social and request.obra_social.strip() else entities['obra_social']
 
-        print(f"\n🔍 Entidades detectadas: {entity_extractor.format_summary(entities)}")
-        print(f"📋 Obra social final: {obra_social}\n")
+        print(f"\n\n{'🔵'*30}")
+        print(f"{'='*60}")
+        print(f"🕐 INICIO: {timestamp_inicio}")
+        print(f"📝 QUERY: {request.pregunta}")
+        print(f"{'='*60}")
+        print(f"⏱️  Extracción de entidades: {time_entities:.3f}s")
+        print(f"🔍 Entidades detectadas: {entity_extractor.format_summary(entities)}")
+        print(f"📋 Obra social final: {obra_social}")
 
-        # 3. Recuperar contexto del RAG
-        context = retriever.get_context_for_llm(
-            query=request.pregunta,
-            top_k=TOP_K_RESULTS,
-            obra_social_filter=obra_social
-        )
+        # 3. Decidir si usar RAG o no
+        # Si NO hay obra social detectada Y la pregunta es genérica → NO usar RAG
+        usar_rag = True
+        preguntas_genericas = ['procedimiento', 'como enrolo', 'como enrollo', 'requisitos basicos', 'documentacion basica']
 
-        # 4. Obtener documentos para metadata de respuesta
-        results = retriever.retrieve(
-            query=request.pregunta,
-            top_k=TOP_K_RESULTS,
-            obra_social_filter=obra_social
-        )
+        if not obra_social and any(keyword in request.pregunta.lower() for keyword in preguntas_genericas):
+            usar_rag = False
+            print(f"💡 Consulta genérica detectada - NO se usa RAG (protocolo básico en prompt)")
+
+        # Recuperar contexto del RAG solo si es necesario
+        start_rag = time.time()
+        if usar_rag:
+            context = retriever.get_context_for_llm(
+                query=request.pregunta,
+                top_k=TOP_K_RESULTS,
+                obra_social_filter=obra_social
+            )
+            results = retriever.retrieve(
+                query=request.pregunta,
+                top_k=TOP_K_RESULTS,
+                obra_social_filter=obra_social
+            )
+        else:
+            context = ""
+            results = []
+        time_rag = time.time() - start_rag
 
         fuentes = [
             SourceDocument(
@@ -177,12 +206,79 @@ async def query_agent(request: QueryRequest):
             for chunk, metadata, score in results
         ]
 
+        print(f"⏱️  Búsqueda RAG (FAISS + embedding): {time_rag:.3f}s")
+        print(f"📚 Documentos recuperados: {len(results)}")
+
         # 5. Generar respuesta con LLM
-        respuesta = llm_client.generate_response(
-            query=request.pregunta,
-            context=context,
-            obra_social=obra_social
-        )
+        start_llm = time.time()
+
+        if request.use_agent:
+            # Modo AGENTE con function calling
+            print(f"🤖 MODO AGENTE ACTIVADO (qwen2.5:3b con tools)")
+
+            # Callback para que el agente pueda consultar RAG
+            def rag_callback(obra_social_arg, query_arg):
+                rag_results = retriever.get_context_for_llm(
+                    query=query_arg,
+                    top_k=TOP_K_RESULTS,
+                    obra_social_filter=obra_social_arg
+                )
+                return rag_results
+
+            # Llamar al agente
+            agent_response = llm_client.generate_response_agent(
+                query=request.pregunta,
+                historial=request.historial if request.historial else [],
+                rag_callback=rag_callback
+            )
+
+            respuesta = agent_response["respuesta"]
+
+            # Si el agente usó RAG, actualizar fuentes
+            if agent_response["needs_rag"] and agent_response["tool_calls"]:
+                tool_call = agent_response["tool_calls"][0]
+                args = tool_call['function']['arguments']
+                # Recuperar fuentes para mostrar
+                temp_results = retriever.retrieve(
+                    query=args.get('query', request.pregunta),
+                    top_k=TOP_K_RESULTS,
+                    obra_social_filter=args.get('obra_social')
+                )
+                fuentes = [
+                    SourceDocument(
+                        archivo=metadata['archivo'],
+                        fragmento=chunk[:200] + "..." if len(chunk) > 200 else chunk,
+                        relevancia=round(score, 3)
+                    )
+                    for chunk, metadata, score in temp_results
+                ]
+
+        else:
+            # Modo CLÁSICO (sin agente)
+            respuesta = llm_client.generate_response(
+                query=request.pregunta,
+                context=context,
+                obra_social=obra_social,
+                historial=request.historial if request.historial else []
+            )
+
+        time_llm = time.time() - start_llm
+
+        # Timer total y timestamp fin
+        time_total = time.time() - start_total
+        timestamp_fin = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        print(f"⏱️  Generación LLM (Ollama): {time_llm:.3f}s")
+        print(f"⏱️  TIEMPO TOTAL: {time_total:.3f}s")
+        print(f"\n{'─'*60}")
+        print(f"💬 RESPUESTA DEL BOT:")
+        print(f"{'─'*60}")
+        print(f"{respuesta}")
+        print(f"{'─'*60}")
+        print(f"📊 Longitud: {len(respuesta)} caracteres")
+        print(f"🕐 FIN: {timestamp_fin}")
+        print(f"{'='*60}")
+        print(f"{'🔴'*30}\n\n")
 
         # 6. Detectar obra social mencionada
         obra_social_detectada = obra_social

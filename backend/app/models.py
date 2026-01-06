@@ -5,17 +5,26 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 
 
+class ConversationMessage(BaseModel):
+    """Mensaje en el historial conversacional"""
+    role: str = Field(..., description="Rol del mensaje: 'user' o 'assistant'")
+    content: str = Field(..., description="Contenido del mensaje")
+
+
 class QueryRequest(BaseModel):
     """Request para consulta al agente"""
     pregunta: str = Field(..., min_length=1, description="Consulta del administrativo")
     obra_social: Optional[str] = Field(None, description="Obra social específica (opcional, puede ser null o string vacío)")
+    historial: Optional[List[ConversationMessage]] = Field(default_factory=list, description="Historial de conversación previo")
+    use_agent: Optional[bool] = Field(False, description="Usar modo agente con function calling (qwen2.5)")
 
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
                     "pregunta": "¿Qué documentos necesito para enrolar un paciente de ENSALUD?",
-                    "obra_social": "ENSALUD"
+                    "obra_social": "ENSALUD",
+                    "historial": []
                 }
             ]
         }
