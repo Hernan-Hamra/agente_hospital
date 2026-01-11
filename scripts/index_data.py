@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Script para indexar documentos PDF/DOCX en FAISS
+Script para indexar chunks FINALES (*_FINAL.json) en FAISS
 
 Uso:
     python scripts/index_data.py
@@ -21,52 +21,37 @@ env_path = backend_path / ".env"
 load_dotenv(env_path)
 
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
-DATA_PATH = os.getenv("DATA_PATH", "../data/obras_sociales")
-DOCS_PATH = os.getenv("DOCS_PATH", "../docs")
+JSON_PATH = os.getenv("JSON_PATH", "../data/obras_sociales_json")
 FAISS_INDEX_PATH = os.getenv("FAISS_INDEX_PATH", "./faiss_index")
-CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "1000"))
-CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "50"))
 
 
 def main():
     """Función principal"""
     print("\n" + "="*70)
-    print("📚 INDEXACIÓN DE DOCUMENTOS - AGENTE HOSPITALARIO")
+    print("📚 INDEXACIÓN DE CHUNKS FINALES - AGENTE HOSPITALARIO")
     print("="*70 + "\n")
 
     # Resolver paths relativos
     script_dir = Path(__file__).parent.parent
-    data_path = (script_dir / DATA_PATH).resolve()
-    docs_path = (script_dir / DOCS_PATH).resolve()
+    json_path = (script_dir / JSON_PATH).resolve()
     index_path = (backend_path / FAISS_INDEX_PATH).resolve()
 
     print(f"📁 Configuración:")
-    print(f"   Obras sociales: {data_path}")
-    print(f"   Documentos generales: {docs_path}")
+    print(f"   Chunks JSON: {json_path}")
     print(f"   Índice de salida: {index_path}")
-    print(f"   Chunk size: {CHUNK_SIZE} caracteres")
-    print(f"   Chunk overlap: {CHUNK_OVERLAP} caracteres\n")
+    print(f"   Modelo: {EMBEDDING_MODEL}\n")
 
-    # Verificar que existan los directorios
-    if not data_path.exists():
-        print(f"❌ Error: No existe {data_path}")
+    # Verificar que exista el directorio
+    if not json_path.exists():
+        print(f"❌ Error: No existe {json_path}")
         return 1
-
-    if not docs_path.exists():
-        print(f"⚠️ Advertencia: No existe {docs_path} (se omitirán docs generales)")
-        docs_path = None
 
     # Crear indexador
     indexer = DocumentIndexer(embedding_model=EMBEDDING_MODEL)
 
-    # Indexar documentos
+    # Indexar desde JSONs
     try:
-        stats = indexer.index_documents(
-            data_path=str(data_path),
-            docs_path=str(docs_path) if docs_path else None,
-            chunk_size=CHUNK_SIZE,
-            chunk_overlap=CHUNK_OVERLAP
-        )
+        stats = indexer.index_from_json(json_path=str(json_path))
 
         # Guardar índice
         indexer.save_index(str(index_path))
@@ -75,8 +60,8 @@ def main():
         print("✅ INDEXACIÓN COMPLETADA EXITOSAMENTE")
         print("="*70)
         print(f"\n📊 Estadísticas:")
-        print(f"   Total documentos: {stats['total_documentos']}")
-        print(f"   Total chunks: {stats['total_chunks']}")
+        print(f"   Archivos JSON procesados: {stats['total_documentos']}")
+        print(f"   Total chunks indexados: {stats['total_chunks']}")
         print(f"   Obras sociales: {stats['obras_sociales']}")
         print(f"\n💾 Índice guardado en: {index_path}")
         print(f"\n🚀 Ahora podés iniciar el backend:")

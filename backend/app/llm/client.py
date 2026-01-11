@@ -314,18 +314,18 @@ Otra obra social → "No tengo [X]. Solo ENSALUD/ASI/IOSFA"
 - Preguntan info que NO es protocolo básico
 - Cualquier duda → mejor consultar RAG que inventar
 
-EJEMPLOS CORRECTOS (contá palabras!):
+EJEMPLOS CORRECTOS:
 User: "protocolo básico"
-Bot: "DNI, credencial, validar. ¿Qué tipo ingreso?" (7 palabras) ✅
+Bot: DNI, credencial, validar. ¿Qué tipo ingreso?
 
 User: "guardia"
-Bot: "Guardia: DNI + credencial. ¿Obra social?" (6 palabras) ✅
+Bot: Guardia: DNI + credencial. ¿Obra social?
 
 User: "cuánto es copago dermatología"
-Bot: [USA consulta_rag porque no sabés] → Si RAG no tiene info → "No tengo esa info. ¿Algo más?" (7 palabras) ✅
+Bot: [USA consulta_rag porque no sabés] → Si RAG no tiene info → No tengo esa info. ¿Algo más?
 
 User: "osde"
-Bot: "No tengo OSDE. Solo ENSALUD/ASI/IOSFA" (6 palabras) ✅
+Bot: No tengo OSDE. Solo ENSALUD/ASI/IOSFA
 """
 
         # Construir mensajes
@@ -396,7 +396,7 @@ Bot: "No tengo OSDE. Solo ENSALUD/ASI/IOSFA" (6 palabras) ✅
                         messages=messages,
                         options={
                             'temperature': 0.1,
-                            'num_predict': 50  # Respuestas cortas después de RAG (max 20 palabras)
+                            'num_predict': 200  # Respuestas completas después de RAG
                         }
                     )
                     elapsed2 = time.time() - start2

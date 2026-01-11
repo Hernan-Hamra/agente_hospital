@@ -20,10 +20,12 @@ Explicar, detectar errores (sin corregir), escribir código SOLO si se pide.
 ## Stack
 
 **LLM**: Ollama qwen2.5:3b (function calling)
-**RAG**: FAISS + sentence-transformers/all-MiniLM-L6-v2
+**RAG**: FAISS + sentence-transformers/all-MiniLM-L6-v2 + cosine similarity
+**Chunking**: Offline en 2 pasos (DOCX/PDF → JSON intermedio → JSON final)
 **Backend**: FastAPI
-**Bot**: python-telegram-bot (memoria conversacional)
+**Bot**: n8n + Telegram (webhook HTTPS) O python-telegram-bot (polling)
 **Agente**: Function calling con tool consulta_rag
+**Túnel**: ngrok (para webhook mode)
 
 ---
 
@@ -50,7 +52,7 @@ options={
 # Segunda llamada (post-RAG)
 options={
     'temperature': 0.1,
-    'num_predict': 50        # Max 20 palabras
+    'num_predict': 200       # Respuestas completas después de RAG (aumentado de 50)
 }
 ```
 
@@ -74,11 +76,33 @@ Si preguntan por otra → "No tengo [X]. Solo ENSALUD/ASI/IOSFA"
 
 ## RAG Config
 
-**Indexer** (`app/rag/indexer.py:50,72`)
+**Pipeline de Chunking Offline (2 pasos)**:
+
+1. **Paso 1**: `scripts/convert_docs_to_json.py`
+   - DOCX/PDF → JSON intermedio (`*_chunks.json`)
+   - Extrae texto, tablas, estructura
+
+2. **Paso 2**: `scripts/clean_chunks_v2.py`
+   - JSON intermedio → JSON final (`*_FINAL.json`)
+   - Limpia, valida, estructura metadata
+   - 1 chunk JSON = 1 embedding (sin chunking runtime)
+
+**Indexer** (`app/rag/indexer.py`)
 ```python
-chunk_size = 1000
-chunk_overlap = 100  # Actualizado de 50
+# MIGRADO: Ya no procesa PDF/DOCX en runtime
+# Ahora indexa directamente desde *_FINAL.json
+
+def index_from_json(json_path):
+    # Lee todos los *_FINAL.json
+    # 1 chunk JSON = 1 embedding
+    # Preserva tablas completas sin splitear
 ```
+
+**Datos indexados**:
+- ASI: 21 chunks
+- ENSALUD: 1 chunk
+- IOSFA: 3 chunks
+- GRUPO_PEDIATRICO: Protocolo base (NO indexado en RAG, hardcoded en prompt)
 
 **Retriever** (`app/rag/retriever.py`)
 ```python
@@ -114,9 +138,9 @@ if similarity > 0.8:  # Tolera errores ortográficos
 
 ---
 
-## Telegram Bot
+## Telegram Integration
 
-**Archivo**: `telegram_bot.py`
+### Opción A: Bot Python directo (`telegram_bot.py`)
 
 **Memoria conversacional**:
 ```python
@@ -124,7 +148,7 @@ from collections import deque
 conversation_history = defaultdict(lambda: deque(maxlen=10))
 ```
 
-**Payload al backend** (L67-71):
+**Payload al backend**:
 ```python
 payload = {
     "pregunta": user_message,
@@ -133,6 +157,34 @@ payload = {
     "use_agent": True  # OBLIGATORIO para modo agente
 }
 ```
+
+### Opción B: n8n + Telegram (Webhook Mode)
+
+**Workflow**: `n8n/workflows/telegram_agente_hospital.json`
+
+**Requisitos**:
+- **ngrok**: Túnel HTTPS (Telegram requiere HTTPS para webhooks)
+- **WEBHOOK_URL**: Variable de entorno para n8n
+
+**Flujo**:
+1. Telegram → ngrok (HTTPS) → n8n webhook
+2. n8n → HTTP POST a `localhost:8000/query`
+3. n8n → Envía respuesta a Telegram
+
+**Setup**:
+```bash
+# Terminal 1: Backend
+cd backend && python3 -m uvicorn app.main:app --reload
+
+# Terminal 2: ngrok (obtener URL HTTPS)
+cd ~ && ./ngrok http 5678
+
+# Terminal 3: n8n (con URL de ngrok)
+export WEBHOOK_URL=https://<ngrok-url>/
+n8n start
+```
+
+**Nota**: La URL de ngrok cambia cada vez (plan gratuito). Necesitas actualizar `WEBHOOK_URL` cada sesión.
 
 ---
 
@@ -145,11 +197,27 @@ backend/app/
 ├── rag/
 │   ├── entity_extractor.py    # L13: OBRAS_SOCIALES
 │   ├── retriever.py           # L64: threshold cosine
-│   └── indexer.py             # L50: chunk_size
+│   └── indexer.py             # MIGRADO: index_from_json (lee *_FINAL.json)
 └── llm/client.py              # L276-421: Agente function calling
+                               # L399: num_predict=200 (post-RAG)
+                               # L317-328: Ejemplos SIN conteo de palabras
 
-telegram_bot.py                # L67: use_agent: True
-scripts/index_data.py          # Reindexar FAISS
+data/obras_sociales_json/
+├── asi/*_FINAL.json           # 21 chunks
+├── ensalud/*_FINAL.json       # 1 chunk
+├── iosfa/*_FINAL.json         # 3 chunks
+└── grupo_pediatrico/*_FINAL.json  # NO indexado (protocolo base en prompt)
+
+scripts/
+├── convert_docs_to_json.py    # Paso 1: DOCX/PDF → JSON intermedio
+├── clean_chunks_v2.py         # Paso 2: JSON intermedio → JSON final
+├── index_data.py              # Reindexar FAISS desde JSON
+└── process_all_step1.py       # Procesar todos los docs (paso 1)
+
+n8n/workflows/
+└── telegram_agente_hospital.json  # Workflow n8n + Telegram webhook
+
+telegram_bot.py                # Bot Python directo (polling mode)
 ```
 
 ---
@@ -164,9 +232,13 @@ scripts/index_data.py          # Reindexar FAISS
 - num_predict 40
 - Si RAG vacío → "No tengo esa info"
 
-### ✅ Respuestas largas cortadas
-**Antes**: 400+ caracteres, texto se cortaba
-**Solución**: Límite 15 palabras, num_predict 40
+### ✅ Respuestas cortadas post-RAG
+**Antes**: Respuestas se cortaban a ~200 caracteres (num_predict=50 muy bajo)
+**Solución**: num_predict=200 en segunda llamada (post-RAG) - permite respuestas completas
+
+### ✅ LLM muestra conteo de palabras
+**Antes**: Bot respondía "DNI, credencial. ¿Qué tipo ingreso? (7 palabras)"
+**Solución**: Eliminado "(X palabras)" de ejemplos en system prompt
 
 ### ✅ Confusión guardia/turno
 **Antes**: Decía "orden" para guardia
@@ -182,22 +254,46 @@ scripts/index_data.py          # Reindexar FAISS
 
 ### ✅ Lento (1:53 min/query)
 **Antes**: llama3.2 muy lento
-**Ahora**: qwen2.5:3b → 30-40s queries simples
+**Ahora**: qwen2.5:3b → 30-40s queries simples, 180-200s con RAG
+**Nota**: Lentitud por CPU sin GPU - no es problema de configuración
+
+### ✅ RAG procesa PDF/DOCX en runtime
+**Antes**: Indexer chunkeaba documentos en cada indexación
+**Ahora**: Pipeline offline en 2 pasos → JSON → indexer lee JSON
+**Beneficios**:
+- Tablas preservadas completas
+- Control humano del chunking
+- Reindexación más rápida
 
 ---
 
 ## Datos
 
-**Ubicación**: `data/obras_sociales/`
+**Fuentes originales**: `data/obras_sociales/` (PDF/DOCX)
 ```
 ensalud/*.docx
 asi/2024-01-04_normas.docx
 iosfa/*.docx
+docs/checklist_general_grupo_pediatrico.docx
 ```
+
+**Datos procesados**: `data/obras_sociales_json/` (JSON estructurado)
+```
+asi/*_FINAL.json           # 21 chunks indexados
+ensalud/*_FINAL.json       # 1 chunk indexado
+iosfa/*_FINAL.json         # 3 chunks indexados
+grupo_pediatrico/*_FINAL.json  # NO indexado (protocolo base)
+```
+
+**GRUPO_PEDIATRICO**:
+- Protocolo base del hospital (NO es una obra social)
+- Aplica a TODOS los pacientes antes de consultar obra social específica
+- Hardcoded en system prompt del agente
+- NO indexado en RAG
 
 **IMPORTANTE**: Documentos NO contienen info sobre copagos específicos por especialidad. Si agente dice montos/especialidades → está ALUCINANDO.
 
-**FAISS Index**: `backend/faiss_index/`
+**FAISS Index**: `backend/faiss_index/` (25 documentos totales)
 
 ---
 
@@ -207,30 +303,71 @@ iosfa/*.docx
 ```env
 OLLAMA_MODEL=qwen2.5:3b
 EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
-CHUNK_SIZE=1000
-CHUNK_OVERLAP=100
+JSON_PATH=data/obras_sociales_json  # Path a JSONs procesados
 TOP_K_RESULTS=5
+
+# OBSOLETO (chunking ahora offline):
+# CHUNK_SIZE=1000
+# CHUNK_OVERLAP=100
+# DATA_PATH=data/obras_sociales
+# DOCS_PATH=docs
 ```
 
 ---
 
 ## Comandos
 
+### Iniciar Sistema (Opción A: Bot Python)
+
 ```bash
-# Backend
+# Terminal 1: Backend
 cd backend && source venv/bin/activate
 python3 -m uvicorn app.main:app --reload
 
-# Bot
+# Terminal 2: Bot
 python3 telegram_bot.py
+```
 
-# Reindexar
+### Iniciar Sistema (Opción B: n8n + ngrok)
+
+```bash
+# Terminal 1: Backend
+cd backend && source venv/bin/activate
+python3 -m uvicorn app.main:app --reload
+
+# Terminal 2: ngrok
+cd ~ && ./ngrok http 5678
+# Copiar URL HTTPS que aparece
+
+# Terminal 3: n8n
+export WEBHOOK_URL=https://<ngrok-url>/
+n8n start
+# Abrir http://localhost:5678 y activar workflow
+```
+
+### Pipeline de Procesamiento
+
+```bash
+# Paso 1: DOCX/PDF → JSON intermedio
+python scripts/convert_docs_to_json.py
+
+# Paso 2: JSON intermedio → JSON final
+python scripts/clean_chunks_v2.py
+
+# Paso 3: Reindexar FAISS desde JSON
 python scripts/index_data.py
+```
 
-# Test
+### Testing
+
+```bash
+# Test directo
 curl -X POST http://localhost:8000/query \
   -H "Content-Type: application/json" \
   -d '{"pregunta": "protocolo básico", "use_agent": true}'
+
+# Health check
+curl http://localhost:8000/health
 ```
 
 ---
@@ -259,9 +396,39 @@ grep OLLAMA_MODEL backend/.env
 
 ## Métricas de Éxito
 
-- ✅ Respuestas < 15 palabras (< 100 chars)
 - ✅ NO inventa obras sociales/copagos
 - ✅ Llama RAG cuando necesita info
 - ✅ "No tengo esa info" si RAG vacío
 - ✅ Memoria conversacional (10 msgs)
-- ✅ < 40s queries simples, < 100s con RAG
+- ⚠️ Respuestas post-RAG: ~400 chars (objetivo: < 100)
+- ⚠️ Performance: 30-40s simple, 180-200s con RAG (CPU sin GPU)
+
+---
+
+## Resumen de Cambios Recientes (Enero 2026)
+
+### Pipeline de Chunking Migrado
+- **Antes**: Runtime chunking de PDF/DOCX en cada indexación
+- **Ahora**: Pipeline offline 2 pasos (DOCX/PDF → JSON intermedio → JSON final)
+- **Ventajas**: Tablas preservadas, control humano, reindexación rápida
+
+### RAG System
+- Migrado de `index_documents()` a `index_from_json()`
+- 25 chunks indexados (ASI: 21, ENSALUD: 1, IOSFA: 3)
+- GRUPO_PEDIATRICO NO indexado (protocolo base en prompt)
+
+### Telegram Integration
+- **Opción A**: Bot Python directo (polling)
+- **Opción B**: n8n + webhook HTTPS (requiere ngrok)
+- ngrok configurado: `~/ngrok http 5678`
+
+### Fixes Aplicados
+- `num_predict=200` en segunda llamada (respuestas completas post-RAG)
+- Eliminado "(X palabras)" de ejemplos en prompt
+- GRUPO_PEDIATRICO renombrado y clarificado (NO es obra social)
+
+### Performance
+- Queries simples: 30-40s
+- Queries con RAG: 180-200s (limitación hardware, no config)
+- Primera llamada: ~6s
+- Segunda llamada (post-RAG): ~179s (bottleneck identificado)

@@ -1,11 +1,9 @@
 """
-Indexador de documentos PDF/DOCX a FAISS
+Indexador de chunks FINALES a FAISS
 """
-import os
+import json
 from pathlib import Path
-from typing import List, Dict
-import pdfplumber
-from docx import Document
+from typing import Dict
 from sentence_transformers import SentenceTransformer
 import faiss
 import numpy as np
@@ -13,7 +11,7 @@ import pickle
 
 
 class DocumentIndexer:
-    """Indexa documentos PDF/DOCX y crea índice FAISS"""
+    """Indexa chunks FINALES (*_chunks_FINAL.json) en FAISS"""
 
     def __init__(self, embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"):
         """
@@ -26,59 +24,12 @@ class DocumentIndexer:
         self.index = None
         self.documents = []  # Almacena metadata de documentos
 
-    def extract_text_from_pdf(self, pdf_path: str) -> str:
-        """Extrae texto de un PDF"""
-        print(f"  Extrayendo texto de PDF: {Path(pdf_path).name}")
-        text = []
-        with pdfplumber.open(pdf_path) as pdf:
-            for page in pdf.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    text.append(page_text)
-        return "\n\n".join(text)
-
-    def extract_text_from_docx(self, docx_path: str) -> str:
-        """Extrae texto de un DOCX"""
-        print(f"  Extrayendo texto de DOCX: {Path(docx_path).name}")
-        doc = Document(docx_path)
-        text = []
-        for para in doc.paragraphs:
-            if para.text.strip():
-                text.append(para.text)
-        return "\n".join(text)
-
-    def chunk_text(self, text: str, chunk_size: int = 1000, overlap: int = 50) -> List[str]:
+    def index_from_json(self, json_path: str) -> Dict:
         """
-        Divide texto en chunks con overlap
+        Indexa chunks desde archivos *_chunks_FINAL.json
 
         Args:
-            text: Texto completo
-            chunk_size: Tamaño de cada chunk en caracteres
-            overlap: Overlap entre chunks
-        """
-        chunks = []
-        start = 0
-        while start < len(text):
-            end = start + chunk_size
-            chunk = text[start:end]
-            if chunk.strip():
-                chunks.append(chunk)
-            start = end - overlap
-        return chunks
-
-    def index_documents(self,
-                       data_path: str,
-                       docs_path: str = None,
-                       chunk_size: int = 1000,
-                       chunk_overlap: int = 50) -> Dict:
-        """
-        Indexa todos los documentos PDF/DOCX encontrados
-
-        Args:
-            data_path: Ruta a data/obras_sociales/
-            docs_path: Ruta opcional a docs/ (checklist general)
-            chunk_size: Tamaño de chunks
-            chunk_overlap: Overlap entre chunks
+            json_path: Ruta a data/obras_sociales_json/
 
         Returns:
             Dict con estadísticas de indexación
@@ -86,82 +37,87 @@ class DocumentIndexer:
         all_chunks = []
         metadata = []
 
-        print("\n=== INDEXANDO DOCUMENTOS ===\n")
+        print("\n=== INDEXANDO CHUNKS FINALES ===\n")
 
-        # 1. Indexar obras sociales
-        data_path = Path(data_path)
-        for os_dir in data_path.iterdir():
-            if not os_dir.is_dir():
-                continue
+        json_path = Path(json_path)
 
-            obra_social = os_dir.name.upper()
-            print(f"Obra Social: {obra_social}")
+        # Buscar todos los *_FINAL.json en subdirectorios
+        final_json_files = list(json_path.glob("**/*_FINAL.json"))
 
-            for file_path in os_dir.iterdir():
-                if file_path.suffix.lower() == '.pdf':
-                    text = self.extract_text_from_pdf(str(file_path))
-                elif file_path.suffix.lower() == '.docx':
-                    text = self.extract_text_from_docx(str(file_path))
-                else:
+        if not final_json_files:
+            raise ValueError(f"No se encontraron archivos *_FINAL.json en {json_path}")
+
+        print(f"📁 Encontrados {len(final_json_files)} archivos *_FINAL.json\n")
+
+        for json_file in final_json_files:
+            # Determinar obra social desde el path
+            obra_social = json_file.parent.name.upper()
+
+            print(f"📄 {obra_social}: {json_file.name}")
+
+            # Cargar JSON
+            with open(json_file, 'r', encoding='utf-8') as f:
+                chunks_data = json.load(f)
+
+            print(f"   → {len(chunks_data)} chunks cargados")
+
+            # Procesar cada chunk
+            for chunk_obj in chunks_data:
+                # El texto completo del chunk
+                chunk_text = chunk_obj.get('texto', '')
+
+                if not chunk_text or not chunk_text.strip():
                     continue
 
-                # Dividir en chunks
-                chunks = self.chunk_text(text, chunk_size, chunk_overlap)
-                print(f"    → {len(chunks)} chunks generados")
+                # Agregar chunk
+                all_chunks.append(chunk_text)
 
-                for chunk in chunks:
-                    all_chunks.append(chunk)
-                    metadata.append({
-                        'archivo': file_path.name,
-                        'obra_social': obra_social,
-                        'ruta': str(file_path)
-                    })
+                # Metadata del chunk (preservar estructura completa)
+                chunk_metadata = {
+                    'obra_social': chunk_obj.get('obra_social', chunk_obj.get('institucion', obra_social)),
+                    'archivo': chunk_obj.get('archivo', json_file.name),
+                    'capitulo': chunk_obj.get('capitulo', ''),
+                    'seccion': chunk_obj.get('seccion', ''),
+                    'tipo': chunk_obj.get('tipo', ''),
+                    'es_tabla': chunk_obj.get('es_tabla', False),
+                    'text': chunk_text,  # Texto del chunk
+                    'json_source': str(json_file)  # Trazabilidad
+                }
 
-        # 2. Indexar documentos generales (checklist hospital)
-        if docs_path:
-            docs_path = Path(docs_path)
-            print(f"\nDocumentos generales:")
-            for file_path in docs_path.glob('*.docx'):
-                print(f"  {file_path.name}")
-                text = self.extract_text_from_docx(str(file_path))
-                chunks = self.chunk_text(text, chunk_size, chunk_overlap)
-                print(f"    → {len(chunks)} chunks generados")
+                # Agregar metadata adicional si existe
+                if 'metadata' in chunk_obj:
+                    chunk_metadata['metadata_extra'] = chunk_obj['metadata']
 
-                for chunk in chunks:
-                    all_chunks.append(chunk)
-                    metadata.append({
-                        'archivo': file_path.name,
-                        'obra_social': 'GENERAL',
-                        'ruta': str(file_path)
-                    })
+                metadata.append(chunk_metadata)
 
-        # 3. Generar embeddings
-        print(f"\n🔄 Generando embeddings para {len(all_chunks)} chunks...")
+        if not all_chunks:
+            raise ValueError("No se encontraron chunks válidos en los JSONs")
+
+        print(f"\n📊 Total chunks a indexar: {len(all_chunks)}")
+
+        # Generar embeddings
+        print(f"\n🔄 Generando embeddings...")
         embeddings = self.model.encode(all_chunks, show_progress_bar=True)
         embeddings = np.array(embeddings).astype('float32')
 
-        # Normalizar embeddings para usar cosine similarity (IndexFlatIP)
+        # Normalizar embeddings para cosine similarity
         faiss.normalize_L2(embeddings)
 
-        # 4. Crear índice FAISS con Inner Product (equivalente a cosine con vectores normalizados)
+        # Crear índice FAISS con Inner Product (equivalente a cosine con vectores normalizados)
         print("\n🔍 Creando índice FAISS (Cosine Similarity)...")
         self.index = faiss.IndexFlatIP(self.dimension)
         self.index.add(embeddings)
 
-        # Guardar chunks de texto junto con metadata
-        for i, chunk in enumerate(all_chunks):
-            metadata[i]['text'] = chunk
-
         self.documents = metadata
 
         stats = {
-            'total_documentos': len(set(m['archivo'] for m in metadata)),
+            'total_documentos': len(final_json_files),
             'total_chunks': len(all_chunks),
-            'obras_sociales': len(set(m['obra_social'] for m in metadata if m['obra_social'] != 'GENERAL'))
+            'obras_sociales': len(set(m['obra_social'] for m in metadata))
         }
 
         print(f"\n✅ Indexación completada:")
-        print(f"   - Documentos: {stats['total_documentos']}")
+        print(f"   - Archivos JSON: {stats['total_documentos']}")
         print(f"   - Chunks: {stats['total_chunks']}")
         print(f"   - Obras sociales: {stats['obras_sociales']}")
 
