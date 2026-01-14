@@ -29,6 +29,90 @@ Explicar, detectar errores (sin corregir), escribir código SOLO si se pide.
 
 ---
 
+## ⚙️ Configuración del LLM - NO modificar sin autorización
+
+### Parámetros del bot por nivel de impacto
+
+Esta tabla ordena TODOS los parámetros del bot por su impacto en el comportamiento.
+
+| Parámetro | Impacto | Ubicación | Valor Actual | Qué Hace |
+|-----------|---------|-----------|--------------|----------|
+| **system_prompt** | 🔴 CRÍTICO | `backend/app/llm/client.py:73-118` | 40 líneas, 10 casos de uso | Define comportamiento completo del bot: saludos, despedidas, ambigüedad, brevedad, obras sociales |
+| **user_prompt** | 🔴 CRÍTICO | `backend/app/llm/client.py:120-133` | Instrucciones por pregunta | Cómo usar contexto RAG, máximo palabras, terminar con pregunta |
+| **historial** | 🔴 CRÍTICO | `scripts/evaluate_conversational_bot.py:697` | ACTIVADO | Mantiene memoria conversacional. Formato: `[{"role": "user/assistant", "content": "..."}]` |
+| **pipeline_mode** | 🔴 CRÍTICO | `backend/app/main.py` | PIPELINE (RAG siempre) | PIPELINE: RAG ejecuta siempre. AGENTE: LLM decide si llamar RAG |
+| **temperature** | 🟡 MEDIO | `backend/app/llm/client.py:172` | 0.1 | Control de creatividad. 0.0=determinista, 1.0=creativo. 0.1=muy preciso, menos alucinaciones |
+| **num_predict** | 🟡 MEDIO | `backend/app/llm/client.py:171` | 120 tokens | Máximo de respuesta. 120 tokens ≈ 50 palabras. Cortar respuesta si muy larga |
+| **num_ctx** | 🟡 MEDIO | `backend/app/llm/client.py:170` | 2048 tokens | Ventana contexto. Cuánto historial+RAG puede procesar. Más alto=más lento |
+| **rag_top_k** | 🟡 MEDIO | `backend/app/rag/retriever.py` | 3 chunks | Cuántos chunks recupera RAG. Más chunks=más contexto pero más lento |
+| **embedding_model** | 🟡 MEDIO | `backend/.env` | BAAI/bge-large-en-v1.5 | Modelo para embeddings. Afecta calidad de búsqueda RAG |
+| **top_k** | 🟢 BAJO | `backend/app/llm/client.py:173` | 20 | Limita opciones de palabras. Menos opciones=más rápido, más determinista |
+| **top_p** | 🟢 BAJO | `backend/app/llm/client.py:174` | 0.8 | Nucleus sampling. Corta cola de probabilidades. 0.8=conservador |
+| **repeat_penalty** | 🟢 BAJO | `backend/app/llm/client.py:175` | 1.2 | Penaliza repeticiones. 1.0=sin penalidad, 1.2=evita repetir palabras |
+| **num_thread** | 🟢 BAJO | `backend/app/llm/client.py:176` | 4 | Hilos CPU para paralelizar. Solo afecta velocidad, no comportamiento |
+| **rag_filter** | 🟢 BAJO | `backend/app/rag/retriever.py` | obra_social si mencionada | Filtra chunks por obra social. Mejora precisión si obra social conocida |
+
+**Estado actual del prompt (2026-01-14)**:
+- 40 líneas (antes: 45 líneas)
+- 10 casos de uso cubiertos:
+  1. Saludos (solo primera vez, IGNORA contexto RAG)
+  2. Despedidas
+  3. Ambigüedad (repregunta)
+  4. Fuera de scope (clima, deportes, noticias)
+  5. Brevedad (máx 50 palabras)
+  6. Múltiples obras sociales (pedir una a la vez)
+  7. Cambio de tema (adaptarse sin confusión)
+  8. Usuario incorrecto (corregir con amabilidad)
+  9. Sobre el bot (explicar función)
+  10. Pide humano (redirigir a bot primero)
+
+**Cambios recientes (2026-01-14)**:
+- ✅ Prompt optimizado: 45 → 40 líneas
+- ✅ Agregada regla: En saludos → IGNORA contexto RAG
+- ✅ Agregada regla: Fuera de scope → mensaje específico
+- ✅ Prohibido inventar errores pasados ("confusiones anteriores")
+- ✅ Solo disculparse si usuario corrige error REAL
+- ✅ Brevedad aumentada: 40 → 50 palabras (para requisitos completos)
+
+### Problemas detectados en última evaluación (2026-01-11 15:23)
+
+1. **Saludo menciona ENSALUD sin que nadie lo pidiera** ✅ SOLUCIONADO
+   - Causa: RAG recupera chunk de ENSALUD, LLM lo usa incorrectamente
+   - Solución aplicada: Regla explícita "En saludos → IGNORA contexto RAG"
+
+2. **Bot se disculpa por "confusiones anteriores" inexistentes** ✅ SOLUCIONADO
+   - Causa: Historial mal interpretado
+   - Solución aplicada: "Prohibido inventar errores pasados. Solo disculparse si usuario corrige error REAL"
+
+3. **Pregunta del clima: respuesta inadecuada** ✅ SOLUCIONADO
+   - Respuesta anterior: "Lo siento por las confusiones..."
+   - Solución aplicada: Regla "FUERA DE SCOPE: Clima/deportes/noticias → 'Solo respondo enrolamiento del Grupo Pediátrico. ¿En qué puedo ayudarte?'"
+
+4. **Tiempos LLM muy lentos**: 80s promedio (vs 1.8s anterior) ⏳ PENDIENTE
+   - Causa: Historial activado + contexto largo
+   - Impacto: Inaceptable para producción
+   - Solución propuesta: Cambiar a modo agente (RAG como herramienta)
+
+### Protocolo antes de modificar parámetros
+
+1. ✅ Documentar valor actual en este archivo
+2. ✅ Explicar razón del cambio
+3. ✅ Ejecutar test corto: `python3 scripts/test_improvements.py` (3 preguntas, 2 min)
+4. ✅ Si funciona → Ejecutar test completo: `python3 scripts/evaluate_conversational_bot.py` (30 preguntas, 15-20 min)
+5. ✅ Comparar métricas antes/después
+6. ✅ Documentar resultado
+
+### Reportes de evaluación
+
+Ubicación: `reports/conversational_evaluation_YYYY-MM-DD_HHMMSS.txt` y `.json`
+
+**Último reporte**: `reports/conversational_evaluation_2026-01-11_144251.txt`
+- 30 preguntas en 3 conversaciones
+- Métricas: Precisión, Completitud, Concisión, Habilidades Conv., Performance
+- Estado: 3/4 problemas SOLUCIONADOS con prompt optimizado (pendiente validar con test)
+
+---
+
 ## Agente con Function Calling
 
 **Archivo**: `backend/app/llm/client.py`

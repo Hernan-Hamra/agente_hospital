@@ -26,7 +26,7 @@ class DocumentIndexer:
 
     def index_from_json(self, json_path: str) -> Dict:
         """
-        Indexa chunks desde archivos *_chunks_FINAL.json
+        Indexa chunks desde archivos *_chunks_flat.json (o *_FINAL.json como fallback)
 
         Args:
             json_path: Ruta a data/obras_sociales_json/
@@ -37,17 +37,21 @@ class DocumentIndexer:
         all_chunks = []
         metadata = []
 
-        print("\n=== INDEXANDO CHUNKS FINALES ===\n")
+        print("\n=== INDEXANDO CHUNKS ===\n")
 
         json_path = Path(json_path)
 
-        # Buscar todos los *_FINAL.json en subdirectorios
-        final_json_files = list(json_path.glob("**/*_FINAL.json"))
+        # Buscar primero archivos *_chunks_flat.json (nuevo formato)
+        final_json_files = list(json_path.glob("**/*_chunks_flat.json"))
+
+        # Si no hay, buscar *_FINAL.json (formato anterior)
+        if not final_json_files:
+            final_json_files = list(json_path.glob("**/*_FINAL.json"))
 
         if not final_json_files:
-            raise ValueError(f"No se encontraron archivos *_FINAL.json en {json_path}")
+            raise ValueError(f"No se encontraron archivos *_chunks_flat.json ni *_FINAL.json en {json_path}")
 
-        print(f"📁 Encontrados {len(final_json_files)} archivos *_FINAL.json\n")
+        print(f"📁 Encontrados {len(final_json_files)} archivos chunks\n")
 
         for json_file in final_json_files:
             # Determinar obra social desde el path
@@ -72,14 +76,17 @@ class DocumentIndexer:
                 # Agregar chunk
                 all_chunks.append(chunk_text)
 
-                # Metadata del chunk (preservar estructura completa)
+                # Metadata del chunk
                 chunk_metadata = {
-                    'obra_social': chunk_obj.get('obra_social', chunk_obj.get('institucion', obra_social)),
+                    'obra_social': chunk_obj.get('obra_social', obra_social),
                     'archivo': chunk_obj.get('archivo', json_file.name),
+                    'chunk_id': chunk_obj.get('chunk_id', ''),
+                    'es_tabla': chunk_obj.get('es_tabla', False),
+                    'tabla_numero': chunk_obj.get('tabla_numero'),
+                    # Campos opcionales (para compatibilidad con formato antiguo)
                     'capitulo': chunk_obj.get('capitulo', ''),
                     'seccion': chunk_obj.get('seccion', ''),
                     'tipo': chunk_obj.get('tipo', ''),
-                    'es_tabla': chunk_obj.get('es_tabla', False),
                     'text': chunk_text,  # Texto del chunk
                     'json_source': str(json_file)  # Trazabilidad
                 }
