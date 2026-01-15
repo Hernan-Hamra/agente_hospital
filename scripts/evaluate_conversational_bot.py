@@ -19,7 +19,7 @@ sys.path.insert(0, str(backend_path))
 
 from app.rag.indexer import DocumentIndexer
 from app.rag.retriever import DocumentRetriever
-from app.llm.client import OllamaClient
+from app.llm.client import create_llm_client
 from dotenv import load_dotenv
 
 # Cargar variables de entorno
@@ -27,7 +27,7 @@ env_path = backend_path / ".env"
 load_dotenv(env_path)
 
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-large-en-v1.5")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:3b")
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama")
 
 
 def convert_to_native_types(obj):
@@ -598,7 +598,7 @@ def ejecutar_evaluacion_conversacional():
     print("🏥 EVALUACIÓN CONVERSACIONAL COMPLETA - AGENTE HOSPITALARIO")
     print("="*80)
     print(f"📅 Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"🤖 Modelo LLM: {OLLAMA_MODEL}")
+    print(f"🤖 LLM Provider: {LLM_PROVIDER}")
     print(f"🔍 Modelo Embeddings: {EMBEDDING_MODEL}")
     print(f"💬 Conversaciones: {len(CONVERSACIONES)}")
     print(f"📊 Total preguntas: {sum(len(c['preguntas']) for c in CONVERSACIONES)}")
@@ -612,10 +612,10 @@ def ejecutar_evaluacion_conversacional():
     retriever = DocumentRetriever(indexer, embedding_model=EMBEDDING_MODEL)
     print(f"✅ Índice cargado: {len(indexer.documents)} chunks\n")
 
-    # Inicializar LLM
+    # Inicializar LLM (usa LLM_PROVIDER del .env)
     print("🤖 Inicializando LLM...")
-    llm_client = OllamaClient(model=OLLAMA_MODEL)
-    print("✅ LLM listo\n")
+    llm_client = create_llm_client()
+    print(f"✅ LLM listo (provider: {llm_client.provider}, modelo: {llm_client.model})\n")
 
     # Resultados globales
     todas_evaluaciones = []
@@ -643,65 +643,51 @@ def ejecutar_evaluacion_conversacional():
             print(f"─" * 80)
             print(f"Pregunta {idx_preg}/10: {pregunta_data['pregunta']}")
 
-            # === EJECUTAR RAG ===
-            start_rag = time.time()
+            # === EJECUTAR AGENTE (LLM decide si llamar RAG) ===
+            start_total = time.time()
+            chunks = []  # Se llenará si el agente llama RAG
             obra_social_filter = pregunta_data.get("obra_social")
 
-            try:
-                chunks = retriever.retrieve(
-                    query=pregunta_data['pregunta'],
-                    top_k=3,
-                    obra_social_filter=obra_social_filter
-                )
-            except Exception as e:
-                print(f"❌ Error en RAG: {e}")
-                chunks = []
-
-            tiempo_rag = (time.time() - start_rag) * 1000
-
-            # Obtener contexto
-            if chunks:
-                context_parts = []
-                for chunk_text, metadata, score in chunks:
-                    context_parts.append(f"[Fuente: {metadata['obra_social']}]\n{chunk_text}")
-                context = "\n\n".join(context_parts)
-            else:
-                context = "No se encontró información relevante."
-
-            # === EJECUTAR LLM ===
-            start_llm = time.time()
-
-            # Prompt mejorado
-            system_prompt = """Eres un asistente hospitalario para enroladores. 
-Reglas:
-- Responde de forma BREVE y PRECISA
-- Máximo 20 palabras si es posible
-- Si la pregunta es ambigua, pide clarificación
-- Saluda cuando te saluden
-- Despídete cuando te despidan
-- Solo usa información del contexto proporcionado
-- Si no sabes algo, dilo claramente"""
-
-            user_prompt = f"""Contexto disponible:
-{context}
-
-Pregunta del usuario: {pregunta_data['pregunta']}
-
-Responde de forma clara y concisa:"""
+            # Callback para RAG cuando el agente lo necesite
+            def rag_callback(obra_social_param, query_param):
+                nonlocal chunks
+                print(f"   📚 RAG callback: obra_social={obra_social_param}, query={query_param[:50]}...")
+                try:
+                    retrieved = retriever.retrieve(
+                        query=query_param,
+                        top_k=3,
+                        obra_social_filter=obra_social_param
+                    )
+                    chunks.extend(retrieved)
+                    if retrieved:
+                        context_parts = []
+                        for chunk_text, metadata, score in retrieved:
+                            context_parts.append(f"[Fuente: {metadata['obra_social']}]\n{chunk_text}")
+                        return "\n\n".join(context_parts)
+                    else:
+                        return "No se encontró información relevante."
+                except Exception as e:
+                    print(f"   ❌ Error en RAG: {e}")
+                    return "Error al buscar información."
 
             try:
-                respuesta = llm_client.generate_response(
+                resultado_agente = llm_client.generate_response_agent(
                     query=pregunta_data['pregunta'],
-                    context=context,
-                    obra_social=obra_social_filter,
-                    historial=historial  # CON historial para mantener contexto conversacional
+                    historial=historial,
+                    rag_callback=rag_callback
                 )
+                respuesta = resultado_agente['respuesta']
+                needs_rag = resultado_agente['needs_rag']
             except Exception as e:
                 respuesta = f"[Error en LLM: {e}]"
+                needs_rag = False
 
-            tiempo_llm = (time.time() - start_llm) * 1000
+            tiempo_total = (time.time() - start_total) * 1000
+            tiempo_rag = tiempo_total * 0.1 if needs_rag else 0  # Aproximación
+            tiempo_llm = tiempo_total - tiempo_rag
 
-            print(f"⏱️  RAG: {tiempo_rag:.0f}ms | LLM: {tiempo_llm:.0f}ms | Total: {(tiempo_rag + tiempo_llm):.0f}ms")
+            print(f"   🔧 Usó RAG: {'Sí' if needs_rag else 'No'}")
+            print(f"⏱️  Total: {tiempo_total:.0f}ms")
             print(f"💬 Respuesta ({len(respuesta.split())} palabras): {respuesta[:100]}...")
 
             # === EVALUAR ===
@@ -797,7 +783,7 @@ def generar_reporte_completo(evaluaciones: List, metricas_globales: dict, report
         f.write("         🏥 EVALUACIÓN CONVERSACIONAL - AGENTE HOSPITALARIO\n")
         f.write("="*80 + "\n\n")
         f.write(f"📅 Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-        f.write(f"🤖 Modelo LLM: {OLLAMA_MODEL}\n")
+        f.write(f"🤖 LLM Provider: {LLM_PROVIDER}\n")
         f.write(f"🔍 Modelo Embeddings: {EMBEDDING_MODEL}\n")
         f.write(f"📊 Total evaluaciones: {len(evaluaciones)}\n\n")
 

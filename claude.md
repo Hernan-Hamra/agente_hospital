@@ -516,3 +516,115 @@ grep OLLAMA_MODEL backend/.env
 - Queries con RAG: 180-200s (limitación hardware, no config)
 - Primera llamada: ~6s
 - Segunda llamada (post-RAG): ~179s (bottleneck identificado)
+
+---
+
+## 🚀 Mejoras Futuras (Documentadas 2026-01-15)
+
+### 1. Patrones de Uso (Prioridad: Alta, Dificultad: Fácil)
+
+**Objetivo**: Saber qué preguntan más los usuarios y de qué obra social.
+
+**Implementación**:
+```python
+# logs/usage_stats.json
+{
+  "2026-01-15": {
+    "total_queries": 45,
+    "por_obra_social": {"ENSALUD": 20, "ASI": 15, "IOSFA": 10},
+    "por_tipo": {"protocolo": 25, "mail": 10, "telefono": 5, "copagos": 5}
+  }
+}
+```
+
+**Archivos a modificar**:
+- `telegram_bot.py`: Agregar logging estructurado después de cada respuesta
+
+**Tiempo estimado**: 1 hora
+
+---
+
+### 2. Preguntas Frecuentes (Prioridad: Media, Dificultad: Media)
+
+**Objetivo**: Identificar top 10 preguntas más comunes para optimizar respuestas.
+
+**Implementación**:
+```python
+# logs/frequent_questions.json
+{
+  "protocolo_internacion": {"count": 50, "ejemplo": "como interno un paciente"},
+  "mail_ensalud": {"count": 30, "ejemplo": "dame el mail de ensalud"},
+  "copago_consulta": {"count": 20, "ejemplo": "cuanto sale la consulta"}
+}
+```
+
+**Opciones de clasificación**:
+1. Keywords simples (más rápido, menos preciso)
+2. LLM clasifica cada pregunta (más lento, más preciso)
+3. Embeddings + clustering (balance)
+
+**Archivos a modificar**:
+- `telegram_bot.py`: Clasificar query antes de procesar
+- Nuevo archivo: `backend/app/analytics/classifier.py`
+
+**Tiempo estimado**: 2-3 horas
+
+---
+
+### 3. Feedback Automático (Prioridad: Media, Dificultad: Media)
+
+**Objetivo**: Detectar cuando el bot no respondió bien para mejorar.
+
+**Señales de feedback negativo**:
+- Usuario repregunta lo mismo (no entendió)
+- Usuario dice "no", "no me sirvió", "otra cosa"
+- Usuario abandona conversación sin despedirse
+
+**Señales de feedback positivo**:
+- "Gracias", "Perfecto", "Ok"
+- Usuario continúa con otra pregunta (flujo normal)
+
+**Implementación**:
+```python
+# logs/feedback.json
+[
+  {
+    "timestamp": "2026-01-15 13:41",
+    "chat_id": "7187787641",
+    "query": "qué es la denuncia?",
+    "response": "La denuncia se refiere...",
+    "feedback": "negative",  # repreguntó 3 veces
+    "resolved": false
+  }
+]
+```
+
+**Archivos a modificar**:
+- `telegram_bot.py`: Detectar patrones de repregunta
+- Nuevo archivo: `backend/app/analytics/feedback.py`
+
+**Tiempo estimado**: 3-4 horas
+
+---
+
+### 4. Dashboard de Analytics (Prioridad: Baja, Dificultad: Media)
+
+**Objetivo**: Visualizar métricas en tiempo real.
+
+**Opciones**:
+1. Script Python que genera reporte diario
+2. Endpoint FastAPI `/analytics` que devuelve JSON
+3. Dashboard web simple (Streamlit o similar)
+
+**Tiempo estimado**: 4-6 horas
+
+---
+
+### Orden de Implementación Sugerido
+
+1. ✅ Reducir prompt (HECHO)
+2. ✅ Reinicio de charlas (HECHO)
+3. ⏳ Patrones de uso (próximo sprint)
+4. ⏳ Preguntas frecuentes
+5. ⏳ Feedback automático
+6. ⏳ Dashboard
