@@ -1,0 +1,333 @@
+# =============================================================================
+# CONFIGURACIÓN DE ESCENARIOS - Agente Hospitalario
+# =============================================================================
+# Este archivo centraliza la configuración de todos los escenarios de prueba.
+# Cada escenario define: provider LLM, modelo, modo de operación y parámetros.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# CONFIGURACIÓN GLOBAL (aplica a todos los escenarios)
+# -----------------------------------------------------------------------------
+global:
+  # RAG compartido
+  rag:
+    embedding_model: "BAAI/bge-large-en-v1.5"  # NO CAMBIAR - modelo del bot original
+    faiss_index_path: "./faiss_index"
+    top_k: 3
+    similarity_threshold: 0.65
+
+  # Base de datos de métricas
+  metrics_db:
+    path: "./data/metrics.db"
+    enabled: true
+
+  # Logging
+  logging:
+    level: "INFO"
+    structured: true
+
+# -----------------------------------------------------------------------------
+# ESCENARIOS DISPONIBLES
+# -----------------------------------------------------------------------------
+scenarios:
+  # ---------------------------------------------------------------------------
+  # ESCENARIO 1: Modo Consulta - Groq Cloud (Plan Gratuito)
+  # ---------------------------------------------------------------------------
+  groq_consulta:
+    name: "Groq Cloud - Modo Consulta"
+    description: "LLM via Groq API, sin memoria conversacional, mínimo consumo de tokens"
+    enabled: true
+
+    llm:
+      provider: "groq"
+      model: "llama-3.3-70b-versatile"  # Plan gratuito
+      # model: "llama-3.1-8b-instant"   # Alternativa más económica
+
+      parameters:
+        temperature: 0.1
+        max_tokens: 150          # Respuestas cortas para consultas puntuales
+        top_p: 0.9
+
+    mode:
+      type: "consulta"           # consulta | agente
+      use_history: false         # Sin memoria conversacional
+      max_history_turns: 0
+      use_function_calling: false
+
+    prompt:
+      system: |
+        Asistente del Grupo Pediátrico para consultas administrativas.
+        Obras sociales: ENSALUD, ASI, IOSFA.
+
+        REGLAS:
+        - Respondé SOLO con información del contexto proporcionado
+        - Si no tenés la información, decí "No tengo esa información"
+        - Máximo 30 palabras
+        - Sin saludos extensos
+        - Español argentino
+
+      # Prompt específico para modo consulta (sin RAG integrado)
+      user_template: |
+        CONTEXTO:
+        {context}
+
+        PREGUNTA: {query}
+
+        Respondé brevemente:
+
+    limits:
+      max_tokens_per_query: 1000   # Límite total (prompt + respuesta)
+      daily_queries: 100           # Límite plan gratuito Groq
+
+    costs:
+      input_per_million: 0.05      # USD por 1M tokens input
+      output_per_million: 0.08     # USD por 1M tokens output
+
+  # ---------------------------------------------------------------------------
+  # ESCENARIO 2: Modo Consulta - Ollama GPU Local
+  # ---------------------------------------------------------------------------
+  ollama_gpu_consulta:
+    name: "Ollama GPU - Modo Consulta"
+    description: "LLM local con GPU (RTX 3060), sin memoria conversacional"
+    enabled: true
+
+    llm:
+      provider: "ollama"
+      model: "llama3.1:8b"        # Modelo recomendado para 12GB VRAM
+      # model: "qwen2.5:7b"       # Alternativa
+      host: "http://localhost:11434"
+
+      parameters:
+        temperature: 0.1
+        num_predict: 150
+        num_ctx: 2048
+        top_k: 20
+        top_p: 0.8
+        repeat_penalty: 1.2
+
+    mode:
+      type: "consulta"
+      use_history: false
+      max_history_turns: 0
+      use_function_calling: false
+
+    prompt:
+      system: |
+        Asistente del Grupo Pediátrico para consultas administrativas.
+        Obras sociales: ENSALUD, ASI, IOSFA.
+
+        REGLAS:
+        - Respondé SOLO con información del contexto proporcionado
+        - Si no tenés la información, decí "No tengo esa información"
+        - Máximo 30 palabras
+        - Sin saludos extensos
+        - Español argentino
+
+      user_template: |
+        CONTEXTO:
+        {context}
+
+        PREGUNTA: {query}
+
+        Respondé brevemente:
+
+    limits:
+      max_tokens_per_query: 1000
+      daily_queries: -1           # Sin límite (local)
+
+    costs:
+      input_per_million: 0.0      # Gratis (hardware propio)
+      output_per_million: 0.0
+      electricity_per_hour: 0.02  # Estimado USD/hora GPU
+
+  # ---------------------------------------------------------------------------
+  # ESCENARIO 3: Modo Consulta - Ollama CPU Local (sin GPU)
+  # ---------------------------------------------------------------------------
+  ollama_cpu_consulta:
+    name: "Ollama CPU - Modo Consulta"
+    description: "LLM local en CPU (sin GPU), modelo liviano, latencia alta esperada"
+    enabled: true
+
+    llm:
+      provider: "ollama"
+      model: "qwen2.5:3b"           # Modelo liviano para CPU
+      # model: "llama3.2:3b"        # Alternativa
+      # model: "phi3:mini"          # Alternativa ultra-liviana
+      host: "http://localhost:11434"
+
+      parameters:
+        temperature: 0.1
+        num_predict: 150            # Limitar tokens para reducir tiempo
+        num_ctx: 1024               # Contexto reducido para CPU
+        num_thread: 4               # Ajustar según cores disponibles
+        top_k: 20
+        top_p: 0.8
+        repeat_penalty: 1.2
+
+    mode:
+      type: "consulta"
+      use_history: false
+      max_history_turns: 0
+      use_function_calling: false
+
+    prompt:
+      system: |
+        Asistente del Grupo Pediátrico para consultas administrativas.
+        Obras sociales: ENSALUD, ASI, IOSFA.
+
+        REGLAS:
+        - Respondé SOLO con información del contexto proporcionado
+        - Si no tenés la información, decí "No tengo esa información"
+        - Máximo 30 palabras
+        - Sin saludos extensos
+        - Español argentino
+
+      user_template: |
+        CONTEXTO:
+        {context}
+
+        PREGUNTA: {query}
+
+        Respondé brevemente:
+
+    limits:
+      max_tokens_per_query: 800     # Más restrictivo para CPU
+      daily_queries: -1             # Sin límite (local)
+
+    costs:
+      input_per_million: 0.0        # Gratis (hardware propio)
+      output_per_million: 0.0
+      electricity_per_hour: 0.01    # Estimado USD/hora CPU (~100W)
+
+    # Notas de performance esperada
+    notes:
+      expected_latency_ms: "30000-60000"  # 30-60 segundos por query
+      recommended_for: "Pruebas de viabilidad, no producción"
+      hardware_minimum: "4 cores, 8GB RAM"
+
+  # ---------------------------------------------------------------------------
+  # ESCENARIO 4: Comparativo (ejecuta todos y compara)
+  # ---------------------------------------------------------------------------
+  comparativo:
+    name: "Modo Comparativo"
+    description: "Ejecuta queries en los 3 escenarios de consulta y compara métricas"
+    enabled: true
+
+    compare_scenarios:
+      - "groq_consulta"
+      - "ollama_gpu_consulta"
+      - "ollama_cpu_consulta"
+
+    evaluation:
+      # Métricas a comparar
+      metrics:
+        - tokens_total
+        - latency_ms
+        - cost_usd
+        - precision_score
+        - response_length
+
+      # Criterios de evaluación
+      quality_checks:
+        check_hallucination: true
+        check_completeness: true
+        check_brevity: true
+        max_words: 50
+
+      # Test set para comparación
+      test_queries_file: "./data/test_queries.json"
+
+# -----------------------------------------------------------------------------
+# ESCENARIOS FUTUROS (deshabilitados)
+# -----------------------------------------------------------------------------
+  groq_agente:
+    name: "Groq Cloud - Modo Agente"
+    description: "Con memoria conversacional y function calling"
+    enabled: false
+
+    llm:
+      provider: "groq"
+      model: "llama-3.3-70b-versatile"
+      parameters:
+        temperature: 0.1
+        max_tokens: 200
+
+    mode:
+      type: "agente"
+      use_history: true
+      max_history_turns: 8
+      use_function_calling: true
+
+    prompt:
+      system: |
+        Asistente del Grupo Pediátrico para ENSALUD, ASI e IOSFA.
+
+        PROTOCOLO GENERAL (respondé directo, sin RAG):
+        - Consulta: DNI+credencial | Práctica: +orden | Guardia: sin orden | Internación: +presupuesto+denuncia(24hs)
+
+        RAG solo para datos de obra social (mail, tel, copagos, requisitos específicos).
+        - SIEMPRE especificá obra_social. Si no la dijo, preguntá antes.
+
+        RESPUESTAS: Saludos→"¡Hola! ¿Con qué obra social necesitás ayuda?" | Despedidas→"¿Necesitás algo más?"
+
+        CIERRE: Si el usuario dice "no/nada/gracias/chau", respondé "¡Perfecto! Hasta luego."
+
+        Máx 30 palabras, español, terminá con pregunta breve.
+
+    limits:
+      max_tokens_per_query: 2000
+      max_tokens_per_conversation: 10000
+
+  ollama_gpu_agente:
+    name: "Ollama GPU - Modo Agente"
+    description: "Con memoria conversacional y function calling"
+    enabled: false
+
+    llm:
+      provider: "ollama"
+      model: "llama3.1:8b"
+      host: "http://localhost:11434"
+      parameters:
+        temperature: 0.1
+        num_predict: 200
+        num_ctx: 4096
+
+    mode:
+      type: "agente"
+      use_history: true
+      max_history_turns: 8
+      use_function_calling: true
+
+# -----------------------------------------------------------------------------
+# CONFIGURACIÓN DE OBRAS SOCIALES
+# -----------------------------------------------------------------------------
+obras_sociales:
+  supported:
+    - ENSALUD
+    - ASI
+    - IOSFA
+
+  # Futuras (cuando se agreguen documentos)
+  planned:
+    - OSDE
+    - Swiss Medical
+    - Galeno
+
+# -----------------------------------------------------------------------------
+# CONFIGURACIÓN DE EVALUACIÓN
+# -----------------------------------------------------------------------------
+evaluation:
+  # Pesos para scoring
+  weights:
+    precision: 0.30
+    completitud: 0.25
+    concision: 0.20
+    latency: 0.15
+    cost: 0.10
+
+  # Thresholds de aceptación
+  thresholds:
+    min_precision: 0.70
+    max_latency_ms: 5000      # Para cloud
+    max_latency_ms_local: 30000  # Para local (más permisivo)
+    max_words: 50

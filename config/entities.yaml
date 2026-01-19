@@ -1,0 +1,104 @@
+# =============================================================================
+# DICCIONARIO DE ENTIDADES - Agente Hospitalario
+# =============================================================================
+# Detección de entidades SIN LLM, usando matching por aliases.
+# El sistema SOLO ejecuta RAG cuando detecta una entidad válida.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# ENTIDADES VÁLIDAS
+# -----------------------------------------------------------------------------
+entities:
+  # Obras Sociales
+  IOSFA:
+    type: "obra_social"
+    canonical: "IOSFA"
+    rag_filter: "IOSFA"
+    aliases:
+      - "iosfa"
+      - "i.o.s.f.a"
+      - "iofsa"        # typo común
+      - "iosafa"       # typo común
+      - "fuerzas armadas"
+      - "militar"
+      - "militares"
+      - "gendarmeria"
+      - "prefectura"
+
+  ENSALUD:
+    type: "obra_social"
+    canonical: "ENSALUD"
+    rag_filter: "ENSALUD"
+    aliases:
+      - "ensalud"
+      - "en salud"
+      - "en-salud"
+      - "ennsalud"     # typo común
+
+  ASI:
+    type: "obra_social"
+    canonical: "ASI"
+    rag_filter: "ASI"
+    aliases:
+      - "asi"
+      - "a.s.i"
+      - "a.s.i."
+      - "asi salud"
+
+  # Institución
+  GRUPO_PEDIATRICO:
+    type: "institucion"
+    canonical: "GRUPO_PEDIATRICO"
+    rag_filter: "GRUPO_PEDIATRICO"
+    aliases:
+      - "grupo pediatrico"
+      - "grupo pediátrico"
+      - "pediatrico"
+      - "pediátrico"
+      - "protocolo general"
+      - "protocolo basico"
+      - "protocolo básico"
+      - "institucional"
+      - "hospital"
+      - "clinica"
+      - "clínica"
+
+# -----------------------------------------------------------------------------
+# CONFIGURACIÓN DE DETECCIÓN
+# -----------------------------------------------------------------------------
+detection:
+  # Estrategia de matching
+  strategy: "first_match"       # Retorna primera coincidencia encontrada
+  case_sensitive: false         # Ignorar mayúsculas/minúsculas
+  match_type: "contains"        # Buscar substring en query
+
+  # Orden de prioridad para detección (se evalúan en este orden)
+  priority:
+    - "IOSFA"
+    - "ENSALUD"
+    - "ASI"
+    - "GRUPO_PEDIATRICO"
+
+# -----------------------------------------------------------------------------
+# MENSAJE CUANDO NO SE DETECTA ENTIDAD
+# -----------------------------------------------------------------------------
+no_entity_response:
+  message: |
+    ¿Para qué obra social es la consulta (IOSFA, ENSALUD, ASI) o es para el Grupo Pediátrico?
+    Volvé a hacer la pregunta especificándolo.
+
+  # Este mensaje se retorna SIN llamar al LLM ni al RAG
+  skip_llm: true
+  skip_rag: true
+
+# -----------------------------------------------------------------------------
+# CONFIGURACIÓN RAG POR TIPO DE ENTIDAD
+# -----------------------------------------------------------------------------
+rag_config:
+  obra_social:
+    top_k: 2
+    include_general: false      # NO mezclar con otros corpora
+
+  institucion:
+    top_k: 2
+    include_general: false      # NO mezclar con otros corpora

@@ -170,8 +170,97 @@ class DocumentToJsonFlat:
 
         return chunks
 
-    def table_to_text(self, tabla: dict) -> str:
-        """Convierte tabla a formato texto legible"""
+    def is_contact_table(self, tabla: dict) -> bool:
+        """
+        Detecta si es una tabla de contactos (mail, teléfono).
+        Mira los encabezados (primera fila) para decidir.
+        """
+        if not tabla.get("contenido") or len(tabla["contenido"]) < 2:
+            return False
+
+        encabezados = tabla["contenido"][0]
+        encabezados_lower = [str(h).lower() for h in encabezados if h]
+
+        # Palabras clave que indican tabla de contactos
+        contact_keywords = ["mail", "tel", "teléfono", "telefono", "email", "correo", "contacto"]
+
+        for header in encabezados_lower:
+            for keyword in contact_keywords:
+                if keyword in header:
+                    return True
+        return False
+
+    def contact_table_to_sentences(self, tabla: dict, obra_social: str) -> str:
+        """
+        Convierte tabla de contactos a oraciones para mejor RAG.
+
+        Ejemplo:
+        | Sector | Tel | mail |
+        | Mesa Operativa | 0810-888 | auto@asi.com |
+
+        →
+        El mail de Mesa Operativa de ASI es auto@asi.com.
+        El teléfono de Mesa Operativa de ASI es 0810-888.
+        """
+        contenido = tabla.get("contenido", [])
+        if len(contenido) < 2:
+            return ""
+
+        encabezados = contenido[0]
+        oraciones = []
+
+        # Encontrar índices de columnas relevantes
+        idx_nombre = None  # Columna con el nombre (Sector, Área, etc.)
+        idx_mail = None
+        idx_tel = None
+
+        for i, header in enumerate(encabezados):
+            header_lower = str(header).lower() if header else ""
+            if any(kw in header_lower for kw in ["sector", "área", "area", "nombre", "departamento"]):
+                idx_nombre = i
+            elif any(kw in header_lower for kw in ["mail", "email", "correo"]):
+                idx_mail = i
+            elif any(kw in header_lower for kw in ["tel", "teléfono", "telefono"]):
+                idx_tel = i
+
+        # Si no encontró columna de nombre, usar la primera
+        if idx_nombre is None:
+            idx_nombre = 0
+
+        # Procesar filas (saltar encabezado)
+        for row in contenido[1:]:
+            if not row or len(row) <= idx_nombre:
+                continue
+
+            nombre = str(row[idx_nombre]).strip() if row[idx_nombre] else ""
+            if not nombre:
+                continue
+
+            # Generar oraciones para mail
+            if idx_mail is not None and len(row) > idx_mail and row[idx_mail]:
+                mail_value = str(row[idx_mail]).strip()
+                if mail_value and "@" in mail_value:
+                    oraciones.append(f"El mail de {nombre} de {obra_social} es {mail_value}.")
+
+            # Generar oraciones para teléfono
+            if idx_tel is not None and len(row) > idx_tel and row[idx_tel]:
+                tel_value = str(row[idx_tel]).strip()
+                if tel_value:
+                    oraciones.append(f"El teléfono de {nombre} de {obra_social} es {tel_value}.")
+
+        return "\n".join(oraciones)
+
+    def table_to_text(self, tabla: dict, obra_social: str = "") -> str:
+        """
+        Convierte tabla a formato texto.
+        - Tablas de contacto → oraciones (mejor para RAG)
+        - Otras tablas → formato tabla (mejor para comparaciones)
+        """
+        # Si es tabla de contactos, convertir a oraciones
+        if self.is_contact_table(tabla):
+            return self.contact_table_to_sentences(tabla, obra_social)
+
+        # Formato tabla normal para las demás
         texto_tabla = f"TABLA #{tabla['numero']} ({tabla['filas']} filas x {tabla['columnas']} columnas)\n\n"
 
         for row_idx, row in enumerate(tabla["contenido"]):
@@ -210,7 +299,7 @@ class DocumentToJsonFlat:
 
             # 1. Crear chunks de TABLAS (completas, sin dividir)
             for tabla in tablas:
-                tabla_texto = self.table_to_text(tabla)
+                tabla_texto = self.table_to_text(tabla, obra_social.upper())
                 all_chunks.append({
                     **metadata_base,
                     "chunk_id": f"T{tabla['numero']:03d}",
@@ -230,7 +319,7 @@ class DocumentToJsonFlat:
 
             # 1. Crear chunks de TABLAS (completas, sin dividir)
             for tabla in tablas:
-                tabla_texto = self.table_to_text(tabla)
+                tabla_texto = self.table_to_text(tabla, obra_social.upper())
                 all_chunks.append({
                     **metadata_base,
                     "chunk_id": f"T{tabla['numero']:03d}",
