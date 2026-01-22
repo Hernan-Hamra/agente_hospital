@@ -8,10 +8,21 @@ Mejoras: automático, con tablas detectadas, overlap entre chunks
 import os
 import json
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Tuple
 import pdfplumber
 from docx import Document
 import re
+
+
+# Regex para detectar contactos en texto
+PHONE_PATTERNS = [
+    r'\b0810[-\s]?\d{3}[-\s]?\d{4}\b',  # 0810-xxx-xxxx
+    r'\b\d{2}[-\s]?\d{8}\b',              # 11-66075765
+    r'\b\d{4}[-\s]?\d{4}\b',              # 4716-8723
+    r'\b\d{4}[-\s]?\d{4}\s*(?:int|Int|INT)[.:]\s*\d+(?:/\d+)*\b',  # 4716-8723 int. 347/381
+]
+
+EMAIL_PATTERN = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
 
 
 class DocumentToJsonFlat:
@@ -273,6 +284,92 @@ class DocumentToJsonFlat:
 
         return texto_tabla.strip()
 
+    def extract_contacts_from_text(self, texto: str, obra_social: str) -> Tuple[str, List[str]]:
+        """
+        Extrae teléfonos y emails del texto y genera oraciones de contacto.
+
+        Args:
+            texto: Texto completo del documento
+            obra_social: Nombre de la obra social
+
+        Returns:
+            (texto_contactos: str, contactos_encontrados: list)
+        """
+        contactos = []
+        emails_encontrados = []
+        telefonos_encontrados = []
+
+        # Buscar emails
+        emails = re.findall(EMAIL_PATTERN, texto, re.IGNORECASE)
+        for email in emails:
+            if email not in emails_encontrados:
+                emails_encontrados.append(email)
+
+        # Buscar teléfonos
+        for pattern in PHONE_PATTERNS:
+            telefonos = re.findall(pattern, texto)
+            for tel in telefonos:
+                if tel not in telefonos_encontrados:
+                    telefonos_encontrados.append(tel)
+
+        # Generar oraciones de contacto
+        # Intentar extraer contexto (qué área/sector corresponde a cada contacto)
+        lineas = texto.split('\n')
+
+        for email in emails_encontrados:
+            # Buscar contexto cercano al email
+            contexto = self._find_contact_context(lineas, email)
+            if contexto:
+                contactos.append(f"El mail de {contexto} de {obra_social} es {email}.")
+            else:
+                contactos.append(f"El mail de contacto de {obra_social} es {email}.")
+
+        for tel in telefonos_encontrados:
+            # Buscar contexto cercano al teléfono
+            contexto = self._find_contact_context(lineas, tel)
+            if contexto:
+                contactos.append(f"El teléfono de {contexto} de {obra_social} es {tel}.")
+            else:
+                contactos.append(f"El teléfono de contacto de {obra_social} es {tel}.")
+
+        texto_contactos = "\n".join(contactos) if contactos else ""
+        return texto_contactos, emails_encontrados + telefonos_encontrados
+
+    def _find_contact_context(self, lineas: List[str], contacto: str) -> str:
+        """
+        Busca el contexto (área/sector) de un contacto en las líneas cercanas.
+
+        Args:
+            lineas: Lista de líneas del texto
+            contacto: Email o teléfono a buscar
+
+        Returns:
+            Contexto encontrado o string vacío
+        """
+        for i, linea in enumerate(lineas):
+            if contacto in linea:
+                # Buscar en la misma línea antes del contacto
+                # Ej: "Mesa Operativa: autorizaciones@asi.com.ar"
+                partes = linea.split(contacto)
+                if partes[0].strip():
+                    # Limpiar y extraer nombre del área
+                    contexto = partes[0].strip()
+                    # Quitar caracteres de puntuación al final
+                    contexto = re.sub(r'[:\-–•\s]+$', '', contexto)
+                    # Tomar solo las últimas palabras relevantes
+                    palabras = contexto.split()
+                    if len(palabras) > 0:
+                        # Tomar últimas 3-4 palabras como máximo
+                        return ' '.join(palabras[-4:])
+
+                # Buscar en línea anterior
+                if i > 0:
+                    linea_anterior = lineas[i-1].strip()
+                    if linea_anterior and len(linea_anterior) < 50:
+                        return linea_anterior
+
+        return ""
+
     def process_document(self, file_path: Path, obra_social: str) -> List[Dict]:
         """
         Procesa un documento y genera chunks flat
@@ -297,7 +394,20 @@ class DocumentToJsonFlat:
             # Procesar PDF (texto + tablas)
             texto_completo, tablas = self.extract_text_and_tables_from_pdf(file_path)
 
-            # 1. Crear chunks de TABLAS (completas, sin dividir)
+            # 1. Crear chunk de CONTACTOS extraídos del texto (PRIMERO, alta prioridad)
+            texto_contactos, contactos_list = self.extract_contacts_from_text(texto_completo, obra_social.upper())
+            if texto_contactos:
+                all_chunks.append({
+                    **metadata_base,
+                    "chunk_id": "CONTACTOS",
+                    "texto": texto_contactos,
+                    "es_tabla": False,
+                    "es_contactos": True,
+                    "contactos_extraidos": contactos_list
+                })
+                print(f"    📞 Contactos extraídos: {len(contactos_list)}")
+
+            # 2. Crear chunks de TABLAS (completas, sin dividir)
             for tabla in tablas:
                 tabla_texto = self.table_to_text(tabla, obra_social.upper())
                 all_chunks.append({
@@ -309,7 +419,7 @@ class DocumentToJsonFlat:
                     "pagina": tabla['pagina']
                 })
 
-            # 2. Crear chunks de TEXTO con overlap
+            # 3. Crear chunks de TEXTO con overlap
             chunks_texto = self.create_chunks_with_overlap(texto_completo, metadata_base)
             all_chunks.extend(chunks_texto)
 
@@ -317,7 +427,20 @@ class DocumentToJsonFlat:
             # Procesar DOCX (texto + tablas)
             texto_completo, tablas = self.extract_text_and_tables_from_docx(file_path)
 
-            # 1. Crear chunks de TABLAS (completas, sin dividir)
+            # 1. Crear chunk de CONTACTOS extraídos del texto (PRIMERO, alta prioridad)
+            texto_contactos, contactos_list = self.extract_contacts_from_text(texto_completo, obra_social.upper())
+            if texto_contactos:
+                all_chunks.append({
+                    **metadata_base,
+                    "chunk_id": "CONTACTOS",
+                    "texto": texto_contactos,
+                    "es_tabla": False,
+                    "es_contactos": True,
+                    "contactos_extraidos": contactos_list
+                })
+                print(f"    📞 Contactos extraídos: {len(contactos_list)}")
+
+            # 2. Crear chunks de TABLAS (completas, sin dividir)
             for tabla in tablas:
                 tabla_texto = self.table_to_text(tabla, obra_social.upper())
                 all_chunks.append({
@@ -328,7 +451,7 @@ class DocumentToJsonFlat:
                     "tabla_numero": tabla['numero']
                 })
 
-            # 2. Crear chunks de TEXTO con overlap
+            # 3. Crear chunks de TEXTO con overlap
             chunks_texto = self.create_chunks_with_overlap(texto_completo, metadata_base)
             all_chunks.extend(chunks_texto)
 
@@ -421,7 +544,7 @@ def main():
     chunk_size = 1800  # ~450 tokens (de 512 max)
     overlap = 300      # ~75 tokens de overlap
 
-    # Convertir
+    # Convertir obras sociales
     converter = DocumentToJsonFlat(
         data_path=str(data_path),
         output_path=str(output_path),
@@ -430,6 +553,30 @@ def main():
     )
 
     stats = converter.process_all_documents()
+
+    # También procesar grupo_pediatrico (está en carpeta separada)
+    grupo_ped_path = project_root / "data" / "grupo_pediatrico"
+    if grupo_ped_path.exists():
+        print("\n" + "="*70)
+        print("PROCESANDO GRUPO PEDIATRICO")
+        print("="*70)
+
+        # Crear salida para grupo_pediatrico
+        grupo_ped_output = output_path / "grupo_pediatrico"
+        grupo_ped_output.mkdir(exist_ok=True)
+
+        for file_path in grupo_ped_path.iterdir():
+            if file_path.suffix.lower() in ['.pdf', '.docx']:
+                chunks = converter.process_document(file_path, "GRUPO_PEDIATRICO")
+
+                # Guardar JSON
+                output_file = grupo_ped_output / f"{file_path.stem}_chunks_flat.json"
+                with open(output_file, 'w', encoding='utf-8') as f:
+                    json.dump(chunks, f, ensure_ascii=False, indent=2)
+
+                print(f"    ✅ Guardado: {output_file.name}")
+                stats["documentos"] += 1
+                stats["chunks_totales"] += len(chunks)
 
     # Mostrar ejemplo de chunk
     print("\n" + "="*70)

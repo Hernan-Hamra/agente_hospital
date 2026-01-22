@@ -40,7 +40,10 @@ entities:
     canonical: "ASI"
     rag_filter: "ASI"
     aliases:
-      - "asi"
+      - " asi "      # Con espacios para evitar match en "básica"
+      - " asi?"      # Final de pregunta
+      - " asi."      # Final de oración
+      - " asi,"      # Con coma
       - "a.s.i"
       - "a.s.i."
       - "asi salud"

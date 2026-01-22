@@ -23,11 +23,12 @@ class QueryMetrics:
     query_length: int = 0
     obra_social: Optional[str] = None
 
-    # Tokens
-    tokens_input: int = 0
-    tokens_output: int = 0
-    tokens_prompt: int = 0
-    tokens_context: int = 0
+    # Tokens (desglose)
+    tokens_input: int = 0       # Total input = prompt + query + context
+    tokens_output: int = 0      # Respuesta del LLM
+    tokens_prompt: int = 0      # System prompt + template fijo
+    tokens_query: int = 0       # Query del usuario
+    tokens_context: int = 0     # Contexto RAG (chunks)
 
     # Latencias (ms)
     latency_embedding_ms: float = 0
@@ -88,19 +89,27 @@ class QueryMetrics:
             "query_hash": self.query_hash,
             "query_length": self.query_length,
             "obra_social": self.obra_social,
+            # Tokens desglosados
             "tokens_input": self.tokens_input,
             "tokens_output": self.tokens_output,
             "tokens_total": self.tokens_total,
+            "tokens_prompt": self.tokens_prompt,
+            "tokens_query": self.tokens_query,
+            "tokens_context": self.tokens_context,
+            # Latencias
             "latency_embedding_ms": self.latency_embedding_ms,
             "latency_faiss_ms": self.latency_faiss_ms,
             "latency_llm_ms": self.latency_llm_ms,
             "latency_total_ms": self.latency_total_ms,
+            # Costos
             "cost_input": self.cost_input,
             "cost_output": self.cost_output,
             "cost_total": self.cost_total,
+            # RAG
             "rag_used": self.rag_used,
             "rag_chunks_count": self.rag_chunks_count,
             "rag_top_similarity": self.rag_top_similarity,
+            # Respuesta
             "response_length": self.response_length,
             "response_words": self.response_words,
             "success": self.success,

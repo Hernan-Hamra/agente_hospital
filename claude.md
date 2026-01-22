@@ -5,6 +5,12 @@
 ### Restricciones
 NO sin permiso: refactorizar, renombrar, mover archivos, cambiar lógica, optimizar, eliminar código.
 
+**ANTES DE CUALQUIER CAMBIO DE CÓDIGO:**
+1. Explicar qué se va a modificar y por qué
+2. Mostrar el código actual vs el propuesto
+3. Explicar consecuencias/impacto del cambio
+4. Esperar autorización explícita del usuario
+
 ### Permitido
 Explicar, detectar errores (sin corregir), escribir código SOLO si se pide.
 

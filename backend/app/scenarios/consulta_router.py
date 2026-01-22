@@ -21,6 +21,23 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
+class ChunkInfo:
+    """Información de un chunk recuperado"""
+    text: str
+    obra_social: str
+    chunk_id: str
+    similarity: float
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "text_preview": self.text[:200] + "..." if len(self.text) > 200 else self.text,
+            "obra_social": self.obra_social,
+            "chunk_id": self.chunk_id,
+            "similarity": round(self.similarity, 4)
+        }
+
+
+@dataclass
 class ConsultaResult:
     """Resultado del Modo Consulta"""
     respuesta: str
@@ -30,6 +47,7 @@ class ConsultaResult:
     context_used: Optional[str]
     chunks_count: int
     top_similarity: float
+    chunks_info: list  # Lista de ChunkInfo
     metrics: Optional[QueryMetrics]
 
     def to_dict(self) -> Dict[str, Any]:
@@ -39,7 +57,8 @@ class ConsultaResult:
             "rag_executed": self.rag_executed,
             "llm_executed": self.llm_executed,
             "chunks_count": self.chunks_count,
-            "top_similarity": self.top_similarity
+            "top_similarity": self.top_similarity,
+            "chunks_info": [c.to_dict() for c in self.chunks_info] if self.chunks_info else []
         }
 
 
@@ -121,6 +140,7 @@ class ConsultaRouter:
                 context_used=None,
                 chunks_count=0,
                 top_similarity=0.0,
+                chunks_info=[],
                 metrics=metrics
             )
 
@@ -134,7 +154,7 @@ class ConsultaRouter:
 
         # NUNCA ejecutar RAG sin filtro
         rag_filter = entity_result.rag_filter
-        top_k = 5  # Aumentado para capturar tablas con datos de contacto
+        top_k = 3  # Configurado según scenarios.yaml y claude.md
 
         chunks = self.retriever.retrieve(
             query=query,
@@ -142,11 +162,18 @@ class ConsultaRouter:
             obra_social_filter=rag_filter
         )
 
-        # Construir contexto
+        # Construir contexto y chunks_info
+        chunks_info = []
         if chunks:
             context_parts = []
             for chunk_text, metadata, score in chunks:
                 context_parts.append(chunk_text)
+                chunks_info.append(ChunkInfo(
+                    text=chunk_text,
+                    obra_social=metadata.get("obra_social", "N/A"),
+                    chunk_id=metadata.get("chunk_id", "N/A"),
+                    similarity=score
+                ))
             context = "\n\n".join(context_parts)
             top_similarity = chunks[0][2]
         else:
@@ -176,11 +203,18 @@ class ConsultaRouter:
             {"role": "user", "content": user_content}
         ]
 
-        # Contar tokens de entrada
-        tokens_input = count_tokens_approximate(SYSTEM_PROMPT + user_content)
+        # Contar tokens de entrada POR COMPONENTE
+        tokens_system_prompt = count_tokens_approximate(SYSTEM_PROMPT)
+        tokens_query = count_tokens_approximate(query)
+        tokens_context = count_tokens_approximate(context)
+        tokens_template = count_tokens_approximate("CONTEXTO:\n\nPREGUNTA:\n")  # Overhead del template
+        tokens_input = tokens_system_prompt + tokens_query + tokens_context + tokens_template
 
         if metrics:
             metrics.tokens_input = tokens_input
+            metrics.tokens_prompt = tokens_system_prompt + tokens_template  # System + template fijo
+            metrics.tokens_query = tokens_query  # Query del usuario
+            metrics.tokens_context = tokens_context  # Solo el contexto RAG (chunks)
 
         # Llamar al LLM
         try:
@@ -210,6 +244,7 @@ class ConsultaRouter:
             context_used=context[:500] + "..." if len(context) > 500 else context,
             chunks_count=len(chunks),
             top_similarity=top_similarity,
+            chunks_info=chunks_info,
             metrics=metrics
         )
 

@@ -240,6 +240,7 @@ class ScenarioRunner:
             "llm_executed": result.llm_executed,
             "chunks_count": result.chunks_count,
             "top_similarity": result.top_similarity,
+            "chunks_info": [c.to_dict() for c in result.chunks_info] if result.chunks_info else [],
             "context_preview": result.context_used[:200] + "..." if result.context_used and len(result.context_used) > 200 else result.context_used
         }
 

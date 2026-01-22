@@ -115,9 +115,11 @@ class EntityDetector:
             entity_config = self._entities.get(entity_name, {})
             aliases = entity_config.get("aliases", [])
 
-            # Verificar nombre canónico (exact)
+            # Verificar nombre canónico (exact) - usando word boundary con espacios
             canonical_normalized = self._normalize(entity_config.get("canonical", entity_name))
-            if canonical_normalized in query_normalized:
+            query_padded = f" {query_normalized} "
+            canonical_padded = f" {canonical_normalized} "
+            if canonical_padded in query_padded:
                 return EntityResult(
                     entity=entity_name,
                     entity_type=entity_config.get("type"),
@@ -126,10 +128,11 @@ class EntityDetector:
                     confidence="exact"
                 )
 
-            # Verificar aliases
+            # Verificar aliases - usando word boundary con espacios
             for alias in aliases:
                 alias_normalized = self._normalize(alias)
-                if alias_normalized in query_normalized:
+                alias_padded = f" {alias_normalized} "
+                if alias_padded in query_padded:
                     return EntityResult(
                         entity=entity_name,
                         entity_type=entity_config.get("type"),
