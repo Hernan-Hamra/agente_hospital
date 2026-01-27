@@ -1,5 +1,5 @@
 # =============================================================================
-# DICCIONARIO DE ENTIDADES - Agente Hospitalario
+# DICCIONARIO DE ENTIDADES - Escenario 1
 # =============================================================================
 # Detección de entidades SIN LLM, usando matching por aliases.
 # El sistema SOLO ejecuta RAG cuando detecta una entidad válida.
@@ -89,12 +89,9 @@ entities:
 # CONFIGURACIÓN DE DETECCIÓN
 # -----------------------------------------------------------------------------
 detection:
-  # Estrategia de matching
-  strategy: "first_match"       # Retorna primera coincidencia encontrada
-  case_sensitive: false         # Ignorar mayúsculas/minúsculas
-  match_type: "contains"        # Buscar substring en query
-
-  # Orden de prioridad para detección (se evalúan en este orden)
+  strategy: "first_match"
+  case_sensitive: false
+  match_type: "contains"
   priority:
     - "IOSFA"
     - "ENSALUD"
@@ -108,19 +105,5 @@ no_entity_response:
   message: |
     ¿Para qué obra social es la consulta (IOSFA, ENSALUD, ASI) o es para el Grupo Pediátrico?
     Volvé a hacer la pregunta especificándolo.
-
-  # Este mensaje se retorna SIN llamar al LLM ni al RAG
   skip_llm: true
   skip_rag: true
-
-# -----------------------------------------------------------------------------
-# CONFIGURACIÓN RAG POR TIPO DE ENTIDAD
-# -----------------------------------------------------------------------------
-rag_config:
-  obra_social:
-    top_k: 2
-    include_general: false      # NO mezclar con otros corpora
-
-  institucion:
-    top_k: 2
-    include_general: false      # NO mezclar con otros corpora

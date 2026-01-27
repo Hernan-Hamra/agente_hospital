@@ -261,18 +261,70 @@ class DocumentToJsonFlat:
 
         return "\n".join(oraciones)
 
+    def _detect_table_keywords(self, tabla: dict) -> str:
+        """
+        Detecta el tipo de tabla y genera keywords semánticas para mejorar RAG.
+        Estas keywords ayudan al embedding a encontrar la tabla con queries coloquiales.
+        """
+        contenido = tabla.get("contenido", [])
+        contenido_str = str(contenido).lower()
+
+        keywords = []
+
+        # Detectar tablas de coseguros/valores/precios
+        if "$" in contenido_str or "coseguro" in contenido_str or "valor" in contenido_str:
+            keywords.extend(["COSEGUROS", "VALORES", "PRECIOS", "TARIFAS", "CUANTO CUESTA", "CUANTO SALE"])
+
+        # Detectar consultas médicas
+        if "médico" in contenido_str or "medico" in contenido_str or "especialista" in contenido_str:
+            keywords.extend(["CONSULTA", "ESPECIALISTA", "MEDICO", "ATENCION"])
+
+        # Detectar laboratorio
+        if "laboratorio" in contenido_str or "determinacion" in contenido_str:
+            keywords.extend(["LABORATORIO", "ANALISIS", "ESTUDIOS"])
+
+        # Detectar imágenes/radiología
+        if "imagen" in contenido_str or "eco" in contenido_str or "tac" in contenido_str or "rmn" in contenido_str:
+            keywords.extend(["IMAGENES", "RADIOLOGIA", "ECOGRAFIA", "TOMOGRAFIA", "RESONANCIA"])
+
+        # Detectar kinesiología/rehabilitación
+        if "kinesio" in contenido_str or "rehabilitacion" in contenido_str or "fisio" in contenido_str:
+            keywords.extend(["KINESIOLOGIA", "REHABILITACION", "FISIOTERAPIA", "SESION"])
+
+        # Detectar cobertura/autorización
+        if "cobertura" in contenido_str or "autorizacion" in contenido_str or "autorización" in contenido_str:
+            keywords.extend(["COBERTURA", "AUTORIZACION", "REQUIERE", "NECESITA"])
+
+        # Detectar internación
+        if "internacion" in contenido_str or "internación" in contenido_str:
+            keywords.extend(["INTERNACION", "HOSPITALIZACION", "CIRUGIA"])
+
+        # Detectar planes
+        if "plan" in contenido_str or "delta" in contenido_str or "quantum" in contenido_str:
+            keywords.extend(["PLANES", "TIPO DE PLAN", "CATEGORIA"])
+
+        # Detectar prácticas/códigos
+        if any(c.isdigit() for c in contenido_str[:200]):  # Códigos numéricos
+            keywords.extend(["PRACTICAS", "CODIGOS", "NOMENCLADOR"])
+
+        return " ".join(keywords) if keywords else ""
+
     def table_to_text(self, tabla: dict, obra_social: str = "") -> str:
         """
         Convierte tabla a formato texto.
         - Tablas de contacto → oraciones (mejor para RAG)
-        - Otras tablas → formato tabla (mejor para comparaciones)
+        - Otras tablas → formato tabla con keywords semánticas (mejor para búsqueda)
         """
         # Si es tabla de contactos, convertir a oraciones
         if self.is_contact_table(tabla):
             return self.contact_table_to_sentences(tabla, obra_social)
 
-        # Formato tabla normal para las demás
-        texto_tabla = f"TABLA #{tabla['numero']} ({tabla['filas']} filas x {tabla['columnas']} columnas)\n\n"
+        # Detectar keywords semánticas para mejorar retrieval
+        keywords = self._detect_table_keywords(tabla)
+        keyword_header = f"{keywords}\n" if keywords else ""
+
+        # Formato tabla normal con keywords al inicio
+        texto_tabla = f"{keyword_header}TABLA #{tabla['numero']} ({tabla['filas']} filas x {tabla['columnas']} columnas)\n\n"
 
         for row_idx, row in enumerate(tabla["contenido"]):
             # Primera fila como encabezado

@@ -9,13 +9,14 @@ Reglas estrictas:
 """
 import time
 import logging
+from pathlib import Path
 from typing import Dict, Any, Optional
 from dataclasses import dataclass
 
-from app.entities.detector import EntityDetector, EntityResult, get_entity_detector
-from app.rag.retriever import DocumentRetriever
-from app.llm.client_v2 import BaseLLMClientV2
-from app.metrics.collector import QueryMetrics, count_tokens_approximate
+import yaml
+
+from .entity_detector import EntityDetector, EntityResult, get_entity_detector
+from ..metrics.collector import QueryMetrics, count_tokens_approximate
 
 logger = logging.getLogger(__name__)
 
@@ -62,21 +63,6 @@ class ConsultaResult:
         }
 
 
-# Prompt fijo del sistema (NO incluye conocimiento del dominio)
-SYSTEM_PROMPT = """Asistente del Grupo Pediátrico. Respondé SOLO con datos del CONTEXTO.
-
-REGLAS:
-1. Si la pregunta es ESPECÍFICA (ej: "coseguro de especialista") → respondé el valor exacto.
-2. Si la pregunta es GENÉRICA (ej: "coseguros de ensalud") → listá TODOS los valores relevantes del contexto.
-3. Si la pregunta es sobre DOCUMENTACIÓN/REQUISITOS → incluí TODOS los documentos y pasos mencionados en el contexto.
-4. Si el dato NO está en el contexto → decí "No tengo esa información".
-
-FORMATO RESPUESTA:
-- Respuesta directa y concisa
-- Si hay múltiples valores, listalos (ej: "Pediatra $1553, Especialista $2912, Laboratorio $971")
-- Máximo 50 palabras"""
-
-
 class ConsultaRouter:
     """
     Router determinístico para Modo Consulta.
@@ -89,13 +75,24 @@ class ConsultaRouter:
 
     def __init__(
         self,
-        retriever: DocumentRetriever,
-        llm_client: BaseLLMClientV2,
-        entity_detector: EntityDetector = None
+        retriever,  # ChromaRetriever
+        llm_client,  # GroqClient
+        entity_detector: EntityDetector = None,
+        config_path: str = None
     ):
         self.retriever = retriever
         self.llm_client = llm_client
         self.entity_detector = entity_detector or get_entity_detector()
+
+        # Cargar config del escenario
+        if config_path is None:
+            config_path = Path(__file__).parent.parent / "config" / "scenario.yaml"
+
+        with open(config_path, 'r', encoding='utf-8') as f:
+            self.config = yaml.safe_load(f)
+
+        self.system_prompt = self.config.get("prompt", {}).get("system", "")
+        self.top_k = self.config.get("rag", {}).get("top_k", 3)
 
     def process_query(
         self,
@@ -161,11 +158,10 @@ class ConsultaRouter:
 
         # NUNCA ejecutar RAG sin filtro
         rag_filter = entity_result.rag_filter
-        top_k = 3  # Configurado según scenarios.yaml y claude.md
 
         chunks = self.retriever.retrieve(
             query=query,
-            top_k=top_k,
+            top_k=self.top_k,
             obra_social_filter=rag_filter
         )
 
@@ -206,26 +202,26 @@ class ConsultaRouter:
         user_content = f"CONTEXTO:\n{context}\n\nPREGUNTA:\n{query}"
 
         messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": user_content}
         ]
 
-        # Contar tokens de entrada POR COMPONENTE
-        tokens_system_prompt = count_tokens_approximate(SYSTEM_PROMPT)
+        # Contar tokens de entrada
+        tokens_system_prompt = count_tokens_approximate(self.system_prompt)
         tokens_query = count_tokens_approximate(query)
         tokens_context = count_tokens_approximate(context)
-        tokens_template = count_tokens_approximate("CONTEXTO:\n\nPREGUNTA:\n")  # Overhead del template
+        tokens_template = count_tokens_approximate("CONTEXTO:\n\nPREGUNTA:\n")
         tokens_input = tokens_system_prompt + tokens_query + tokens_context + tokens_template
 
         if metrics:
             metrics.tokens_input = tokens_input
-            metrics.tokens_prompt = tokens_system_prompt + tokens_template  # System + template fijo
-            metrics.tokens_query = tokens_query  # Query del usuario
-            metrics.tokens_context = tokens_context  # Solo el contexto RAG (chunks)
+            metrics.tokens_prompt = tokens_system_prompt + tokens_template
+            metrics.tokens_query = tokens_query
+            metrics.tokens_context = tokens_context
 
         # Llamar al LLM
         try:
-            llm_result = self._call_llm(messages)
+            llm_result = self.llm_client.generate(messages)
             respuesta = llm_result["respuesta"]
             tokens_output = llm_result.get("tokens_output", count_tokens_approximate(respuesta))
         except Exception as e:
@@ -254,39 +250,3 @@ class ConsultaRouter:
             chunks_info=chunks_info,
             metrics=metrics
         )
-
-    def _call_llm(self, messages: list) -> Dict[str, Any]:
-        """
-        Llama al LLM con los mensajes construidos.
-        Abstrae la diferencia entre Groq y Ollama.
-        """
-        config = self.llm_client.config
-        params = config.llm.parameters
-
-        if config.llm.provider == "groq":
-            response = self.llm_client.client.chat.completions.create(
-                model=config.llm.model,
-                messages=messages,
-                max_tokens=params.get("max_tokens", 100),
-                temperature=params.get("temperature", 0.1)
-            )
-            respuesta = response.choices[0].message.content or ""
-            tokens_output = response.usage.completion_tokens if response.usage else 0
-            return {"respuesta": respuesta, "tokens_output": tokens_output}
-
-        elif config.llm.provider == "ollama":
-            response = self.llm_client.client.chat(
-                model=config.llm.model,
-                messages=messages,
-                options={
-                    "temperature": params.get("temperature", 0.1),
-                    "num_predict": params.get("num_predict", 100),
-                    "num_ctx": params.get("num_ctx", 1024)
-                }
-            )
-            respuesta = response["message"]["content"]
-            tokens_output = response.get("eval_count", 0)
-            return {"respuesta": respuesta, "tokens_output": tokens_output}
-
-        else:
-            raise ValueError(f"Provider no soportado: {config.llm.provider}")

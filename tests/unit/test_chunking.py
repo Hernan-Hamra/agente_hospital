@@ -121,8 +121,8 @@ class TestChunkCreation:
 class TestTableToText:
     """Tests de conversión de tablas a texto"""
 
-    def test_simple_table_conversion(self, converter):
-        """Convierte tabla simple a texto"""
+    def test_contact_table_to_sentences(self, converter):
+        """Tabla de contactos se convierte a oraciones (mejor para RAG)"""
         tabla = {
             'numero': 1,
             'filas': 3,
@@ -134,12 +134,32 @@ class TestTableToText:
             ]
         }
 
+        texto = converter.table_to_text(tabla, obra_social="TEST")
+
+        # Las tablas de contacto ahora se convierten a oraciones
+        assert "mail" in texto.lower() or "email" in texto.lower()
+        assert "juan@example.com" in texto
+        assert "maria@example.com" in texto
+
+    def test_non_contact_table_format(self, converter):
+        """Tabla sin emails/teléfonos mantiene formato tabla"""
+        tabla = {
+            'numero': 1,
+            'filas': 3,
+            'columnas': 2,
+            'contenido': [
+                ['Código', 'Precio'],
+                ['A001', '$1000'],
+                ['B002', '$2000']
+            ]
+        }
+
         texto = converter.table_to_text(tabla)
 
+        # Tablas normales tienen formato "TABLA #N"
         assert "TABLA #1" in texto
-        assert "3 filas x 2 columnas" in texto
-        assert "Nombre" in texto
-        assert "juan@example.com" in texto
+        assert "$1000" in texto
+        assert "$2000" in texto
 
     def test_table_with_empty_cells(self, converter):
         """Tabla con celdas vacías"""

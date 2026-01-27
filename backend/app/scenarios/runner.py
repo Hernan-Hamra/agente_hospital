@@ -11,8 +11,7 @@ from pathlib import Path
 
 from app.config.loader import ConfigLoader, ScenarioConfig, get_config
 from app.llm.client_v2 import create_client_v2, BaseLLMClientV2
-from app.rag.retriever import DocumentRetriever
-from app.rag.indexer import DocumentIndexer
+from app.rag.retriever_chroma import ChromaRetriever  # Cambio a Chroma
 from app.metrics.database import MetricsDB
 from app.metrics.collector import QueryMetrics
 from app.scenarios.consulta_router import ConsultaRouter
@@ -36,9 +35,8 @@ class ScenarioRunner:
         self.config_loader = get_config(config_path)
         self.global_config = self.config_loader.global_config
 
-        # RAG compartido (se inicializa bajo demanda)
-        self._indexer: Optional[DocumentIndexer] = None
-        self._retriever: Optional[DocumentRetriever] = None
+        # RAG compartido (ChromaDB - se inicializa bajo demanda)
+        self._retriever: Optional[ChromaRetriever] = None
 
         # Clientes LLM por escenario (cache)
         self._clients: Dict[str, BaseLLMClientV2] = {}
@@ -58,26 +56,13 @@ class ScenarioRunner:
     # =========================================================================
 
     def _ensure_rag_loaded(self):
-        """Carga el RAG si no está cargado"""
-        if self._indexer is None:
-            logger.info("Cargando índice RAG...")
-            self._indexer = DocumentIndexer(
+        """Carga el RAG (ChromaDB) si no está cargado"""
+        if self._retriever is None:
+            logger.info("Cargando ChromaDB RAG...")
+            self._retriever = ChromaRetriever(
                 embedding_model=self.global_config.rag.embedding_model
             )
-
-            index_path = Path(self.global_config.rag.faiss_index_path)
-            if not index_path.exists():
-                # Buscar en ubicación alternativa
-                alt_path = Path(__file__).parent.parent.parent / "faiss_index"
-                if alt_path.exists():
-                    index_path = alt_path
-
-            self._indexer.load_index(str(index_path))
-            self._retriever = DocumentRetriever(
-                self._indexer,
-                embedding_model=self.global_config.rag.embedding_model
-            )
-            logger.info(f"RAG cargado: {len(self._indexer.documents)} chunks")
+            logger.info(f"ChromaDB RAG cargado: {self._retriever.collection.count()} chunks")
 
     def _get_client(self, scenario_id: str) -> BaseLLMClientV2:
         """Obtiene o crea el cliente LLM para un escenario"""
@@ -404,8 +389,9 @@ class ScenarioRunner:
     def health_check(self) -> Dict:
         """Verifica estado del sistema"""
         status = {
-            "rag_loaded": self._indexer is not None,
-            "rag_documents": len(self._indexer.documents) if self._indexer else 0,
+            "rag_loaded": self._retriever is not None,
+            "rag_documents": self._retriever.collection.count() if self._retriever else 0,
+            "rag_type": "ChromaDB",
             "metrics_enabled": self._metrics_db is not None,
             "scenarios": {}
         }

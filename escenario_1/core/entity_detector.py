@@ -53,9 +53,8 @@ class EntityDetector:
         """
         if config_path is None:
             possible_paths = [
-                Path(__file__).parent.parent.parent.parent / "config" / "entities.yaml",
-                Path("config/entities.yaml"),
-                Path("../config/entities.yaml"),
+                Path(__file__).parent.parent / "config" / "entities.yaml",
+                Path(__file__).parent.parent.parent / "config" / "entities.yaml",
             ]
             for p in possible_paths:
                 if p.exists():

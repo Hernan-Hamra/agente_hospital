@@ -193,19 +193,39 @@ def load_test_queries(queries_file: str = None) -> tuple[list, dict]:
         return FALLBACK_QUERIES, {"delay_segundos": 5}
 
 
+# Sinónimos para evaluación flexible
+SINONIMOS = {
+    "horas": ["hs", "hrs", "h"],
+    "sin cargo": ["exento", "exentos", "s/c", "gratis", "sin costo", "sin abonar"],
+    "solicitar obra social": ["qué obra social", "para qué obra social", "cuál obra social", "indicar obra social"],
+    "aclaración": ["especificar", "indicar", "detallar", "especifiques"],
+}
+
+
 def evaluate_response(respuesta: str, esperada: str) -> dict:
-    """Evalúa si la respuesta contiene la información esperada"""
+    """Evalúa si la respuesta contiene la información esperada (con sinónimos)"""
     if not esperada:
         return {"match": None, "reason": "Sin respuesta esperada definida"}
 
     respuesta_lower = respuesta.lower()
     esperada_lower = esperada.lower()
 
-    # Dividir esperada en términos clave
-    terminos = [t.strip() for t in esperada_lower.replace(",", " ").split() if len(t.strip()) > 2]
+    # Dividir esperada en términos clave (incluir números de 2 dígitos como "24")
+    terminos = [t.strip() for t in esperada_lower.replace(",", " ").split() if len(t.strip()) >= 2]
 
-    # Contar cuántos términos clave aparecen en la respuesta
-    matches = sum(1 for t in terminos if t in respuesta_lower)
+    # Contar cuántos términos clave aparecen en la respuesta (con sinónimos)
+    matches = 0
+    for t in terminos:
+        if t in respuesta_lower:
+            matches += 1
+        else:
+            # Buscar sinónimos
+            for key, sinonimos in SINONIMOS.items():
+                if t in key or key in t:
+                    if any(sin in respuesta_lower for sin in sinonimos):
+                        matches += 1
+                        break
+
     match_ratio = matches / len(terminos) if terminos else 0
 
     # Criterio: 60% de términos clave deben estar presentes

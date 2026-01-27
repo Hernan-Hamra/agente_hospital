@@ -61,6 +61,7 @@ scenarios:
 
         REGLAS:
         - Respondé SOLO con información del contexto proporcionado
+        - Las tablas usan formato: "Concepto | Valor" (ej: "Médicos Especialistas | $ 2912" significa coseguro=$2912)
         - Si no tenés la información, decí "No tengo esa información"
         - Máximo 30 palabras
         - Sin saludos extensos

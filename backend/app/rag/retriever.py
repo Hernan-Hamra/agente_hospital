@@ -5,6 +5,8 @@ from typing import List, Tuple
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
+from .query_rewriter import rewrite_query
+
 
 class DocumentRetriever:
     """Busca documentos relevantes en el índice FAISS"""
@@ -18,7 +20,7 @@ class DocumentRetriever:
         self.indexer = indexer
         self.model = SentenceTransformer(embedding_model)
 
-    def retrieve(self, query: str, top_k: int = 5, obra_social_filter: str = None) -> List[Tuple[str, dict, float]]:
+    def retrieve(self, query: str, top_k: int = 5, obra_social_filter: str = None, use_rewriter: bool = True) -> List[Tuple[str, dict, float]]:
         """
         Recupera los top_k documentos más relevantes
 
@@ -26,12 +28,18 @@ class DocumentRetriever:
             query: Consulta del usuario
             top_k: Cantidad de resultados a retornar
             obra_social_filter: Filtrar por obra social específica
+            use_rewriter: Si True, aplica query rewriting para mejorar retrieval
 
         Returns:
             Lista de tuplas (chunk_text, metadata, score)
         """
-        # Generar embedding de la query
-        query_embedding = self.model.encode([query])[0].astype('float32')
+        # Aplicar query rewriting si está habilitado
+        search_query = query
+        if use_rewriter:
+            search_query = rewrite_query(query, obra_social_filter)
+
+        # Generar embedding de la query (reescrita o original)
+        query_embedding = self.model.encode([search_query])[0].astype('float32')
         query_embedding = np.array([query_embedding])
 
         # Normalizar query embedding para cosine similarity
