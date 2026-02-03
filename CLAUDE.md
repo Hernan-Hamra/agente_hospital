@@ -24,6 +24,25 @@ NO reindexar ni modificar ChromaDB hasta que el usuario lo ordene explícitament
 
 Antes de modificar cualquier archivo de datos, verificar que exista backup o crearlo.
 
+## Regla 4: Tablas Markdown alineadas
+
+Al escribir tablas Markdown, SIEMPRE alinear las columnas visualmente con espacios para que los separadores `|` queden verticalmente alineados.
+
+**Correcto:**
+```markdown
+| Escenario     | Descripción   | RAG      | LLM  | Memoria |
+|---------------|---------------|----------|------|---------|
+| escenario_1   | Modo Consulta | ChromaDB | Groq | No      |
+| escenario_2   | Bot SQL       | No       | No   | No      |
+```
+
+**Incorrecto:**
+```markdown
+| Escenario | Descripción | RAG | LLM | Memoria |
+|-----------|-------------|-----|-----|---------|
+| escenario_1 | Modo Consulta | ChromaDB | Groq | No |
+```
+
 ## Estructura del proyecto (2026-02-03)
 
 ```
@@ -41,11 +60,11 @@ agente_hospital/
 
 ### Escenarios
 
-| Escenario | Descripción | RAG | LLM | Memoria |
-|-----------|-------------|-----|-----|---------|
-| escenario_1 | Modo Consulta | ChromaDB | Groq | No |
-| escenario_2 | Bot SQL | No | No | No |
-| escenario_3 | Modo Agente | ChromaDB | Groq | Sí |
+| Escenario     | Descripción   | RAG      | LLM  | Memoria |
+|---------------|---------------|----------|------|---------|
+| escenario_1   | Modo Consulta | ChromaDB | Groq | No      |
+| escenario_2   | Bot SQL       | No       | No   | No      |
+| escenario_3   | Modo Agente   | ChromaDB | Groq | Sí      |
 
 ### Tests por escenario
 
