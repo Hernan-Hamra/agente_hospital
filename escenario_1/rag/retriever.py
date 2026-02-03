@@ -36,7 +36,7 @@ class ChromaRetriever:
         # Resolver path por defecto
         if persist_directory is None:
             persist_directory = str(
-                Path(__file__).parent.parent.parent / "data" / "chroma_db"
+                Path(__file__).parent.parent.parent / "shared" / "data" / "chroma_db"
             )
 
         self.persist_directory = persist_directory

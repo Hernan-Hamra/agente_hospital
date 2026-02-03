@@ -20,7 +20,7 @@ sys.path.insert(0, str(project_root))
 from escenario_1.rag.retriever import ChromaRetriever
 from escenario_1.core.query_rewriter import rewrite_query
 
-CHROMA_PATH = str(project_root / "data" / "chroma_db")
+CHROMA_PATH = str(project_root / "shared" / "data" / "chroma_db")
 
 
 @dataclass

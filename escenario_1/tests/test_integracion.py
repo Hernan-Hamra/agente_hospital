@@ -30,7 +30,7 @@ from escenario_1.core.router import ConsultaRouter
 from escenario_1.core.entity_detector import get_entity_detector, reset_entity_detector
 from escenario_1.metrics.collector import QueryMetrics
 
-CHROMA_PATH = str(project_root / "data" / "chroma_db")
+CHROMA_PATH = str(project_root / "shared" / "data" / "chroma_db")
 CONFIG_PATH = str(project_root / "escenario_1" / "config")
 GROQ_MODEL = "llama-3.3-70b-versatile"
 

@@ -1,9 +1,9 @@
 # =============================================================================
-# ESCENARIO 1: Modo Consulta + ChromaDB + Groq Gratis
+# ESCENARIO 3: Modo Agente + ChromaDB + Groq Gratis
 # =============================================================================
 
-name: "Escenario 1 - Modo Consulta"
-description: "Bot stateless con ChromaDB RAG y Groq gratis"
+name: "Escenario 3 - Modo Agente"
+description: "Bot conversacional con memoria, ChromaDB RAG y Groq gratis"
 version: "1.0.0"
 
 # -----------------------------------------------------------------------------
@@ -13,8 +13,8 @@ llm:
   provider: "groq"
   model: "llama-3.3-70b-versatile"
   parameters:
-    temperature: 0.1
-    max_tokens: 150
+    temperature: 0.3  # Más creativo que consulta
+    max_tokens: 300   # Respuestas más largas
     top_p: 0.9
 
 # -----------------------------------------------------------------------------
@@ -22,7 +22,7 @@ llm:
 # -----------------------------------------------------------------------------
 rag:
   type: "chromadb"
-  persist_directory: "../data/chroma_db"  # Relativo a project root
+  persist_directory: "../../shared/data/chroma_db"  # Compartido con escenario_1
   collection_name: "obras_sociales"
   embedding_model: "BAAI/bge-large-en-v1.5"
   top_k: 5
@@ -32,26 +32,32 @@ rag:
 # Mode Configuration
 # -----------------------------------------------------------------------------
 mode:
-  type: "consulta"
-  use_history: false
-  max_history_turns: 0
+  type: "agente"
+  use_history: true
+  max_history_turns: 5  # Mantiene últimos 5 turnos
 
 # -----------------------------------------------------------------------------
-# System Prompt
+# System Prompt (Modo Agente)
 # -----------------------------------------------------------------------------
 prompt:
   system: |
-    Asistente del Grupo Pediátrico. Respondé SOLO con datos del CONTEXTO.
+    Sos el Asistente del Grupo Pediátrico. Ayudás al equipo de admisión con consultas sobre obras sociales.
+
+    CAPACIDADES:
+    - Respondés preguntas sobre ENSALUD, ASI, IOSFA y Grupo Pediátrico
+    - Mantenés el contexto de la conversación
+    - Podés hacer seguimiento de consultas anteriores
 
     REGLAS:
-    1. Si la pregunta es ESPECÍFICA (ej: "coseguro de especialista") → respondé el valor exacto.
-    2. Si la pregunta es GENÉRICA (ej: "coseguros de ensalud") → listá TODOS los valores relevantes del contexto.
-    3. Si el dato NO está en el contexto → decí "No tengo esa información".
+    1. Usá SOLO información del CONTEXTO proporcionado
+    2. Si no tenés la información, decilo claramente
+    3. Sé amable y profesional
+    4. Podés referenciar consultas anteriores del usuario
 
-    FORMATO RESPUESTA:
-    - Respuesta directa y concisa
-    - Si hay múltiples valores, listalos (ej: "Pediatra $1553, Especialista $2912, Laboratorio $971")
-    - Máximo 50 palabras
+    FORMATO:
+    - Respuestas claras y estructuradas
+    - Usá listas cuando sea apropiado
+    - Máximo 100 palabras por respuesta
 
 # -----------------------------------------------------------------------------
 # Costs (for metrics)

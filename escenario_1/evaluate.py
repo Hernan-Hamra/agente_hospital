@@ -97,7 +97,7 @@ def run_evaluation(delay_seconds: int = 3) -> List[TestResult]:
     # Inicializar componentes
     print("\n📦 Inicializando componentes...")
 
-    chroma_path = str(project_root / "data" / "chroma_db")
+    chroma_path = str(project_root / "shared" / "data" / "chroma_db")
     retriever = ChromaRetriever(persist_directory=chroma_path)
     print(f"   ChromaDB: {retriever.count()} chunks")
 

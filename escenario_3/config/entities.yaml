@@ -1,0 +1,109 @@
+# =============================================================================
+# DICCIONARIO DE ENTIDADES - Escenario 1
+# =============================================================================
+# Detección de entidades SIN LLM, usando matching por aliases.
+# El sistema SOLO ejecuta RAG cuando detecta una entidad válida.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# ENTIDADES VÁLIDAS
+# -----------------------------------------------------------------------------
+entities:
+  # Obras Sociales
+  IOSFA:
+    type: "obra_social"
+    canonical: "IOSFA"
+    rag_filter: "IOSFA"
+    aliases:
+      - "iosfa"
+      - "i.o.s.f.a"
+      - "iofsa"        # typo común
+      - "iosafa"       # typo común
+      - "fuerzas armadas"
+      - "militar"
+      - "militares"
+      - "gendarmeria"
+      - "prefectura"
+
+  ENSALUD:
+    type: "obra_social"
+    canonical: "ENSALUD"
+    rag_filter: "ENSALUD"
+    aliases:
+      - "ensalud"
+      - "en salud"
+      - "en-salud"
+      - "ennsalud"     # typo común
+
+  ASI:
+    type: "obra_social"
+    canonical: "ASI"
+    rag_filter: "ASI"
+    aliases:
+      - " asi "      # Con espacios para evitar match en "básica"
+      - " asi?"      # Final de pregunta
+      - " asi."      # Final de oración
+      - " asi,"      # Con coma
+      - "a.s.i"
+      - "a.s.i."
+      - "asi salud"
+
+  # Institución
+  GRUPO_PEDIATRICO:
+    type: "institucion"
+    canonical: "GRUPO_PEDIATRICO"
+    rag_filter: "GRUPO_PEDIATRICO"
+    aliases:
+      # Nombre completo
+      - "grupo pediatrico"
+      - "grupo pediátrico"
+      - "pediatrico"
+      - "pediátrico"
+      # Abreviatura GP
+      - "gp"
+      - "g p"
+      - "g.p"
+      - "g.p."
+      # Errores ortográficos comunes
+      - "grupo pedaitrico"
+      - "grupo pediatirco"
+      - "grupo pediartrico"
+      - "gruop pediatrico"
+      - "grpo pediatrico"
+      - "grupo pediat"
+      - "pedaitrico"
+      - "pediatirco"
+      - "pediartrico"
+      # Contexto institucional
+      - "protocolo general"
+      - "protocolo basico"
+      - "protocolo básico"
+      - "enrolamiento"
+      - "enrolar paciente"
+      - "institucional"
+      - "hospital"
+      - "clinica"
+      - "clínica"
+
+# -----------------------------------------------------------------------------
+# CONFIGURACIÓN DE DETECCIÓN
+# -----------------------------------------------------------------------------
+detection:
+  strategy: "first_match"
+  case_sensitive: false
+  match_type: "contains"
+  priority:
+    - "IOSFA"
+    - "ENSALUD"
+    - "ASI"
+    - "GRUPO_PEDIATRICO"
+
+# -----------------------------------------------------------------------------
+# MENSAJE CUANDO NO SE DETECTA ENTIDAD
+# -----------------------------------------------------------------------------
+no_entity_response:
+  message: |
+    ¿Para qué obra social es la consulta (IOSFA, ENSALUD, ASI) o es para el Grupo Pediátrico?
+    Volvé a hacer la pregunta especificándolo.
+  skip_llm: true
+  skip_rag: true

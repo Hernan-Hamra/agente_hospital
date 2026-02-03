@@ -13,7 +13,7 @@ sys.path.insert(0, str(project_root))
 
 from escenario_1.rag.retriever import ChromaRetriever
 
-CHROMA_PATH = str(project_root / "data" / "chroma_db")
+CHROMA_PATH = str(project_root / "shared" / "data" / "chroma_db")
 
 
 @pytest.fixture(scope="module")
