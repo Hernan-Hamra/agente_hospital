@@ -1,0 +1,734 @@
+# Bot de Consultas para Admisión - Propuesta Completa
+
+## Índice
+
+1. [Resumen Ejecutivo](#1-resumen-ejecutivo)
+2. [Problema a Resolver](#2-problema-a-resolver)
+3. [Solución Propuesta](#3-solución-propuesta)
+4. [Funcionalidades](#4-funcionalidades)
+5. [Casos de Uso Cubiertos](#5-casos-de-uso-cubiertos)
+6. [Demostración](#6-demostración)
+7. [Sistema de Mejora Continua](#7-sistema-de-mejora-continua)
+8. [Arquitectura Técnica](#8-arquitectura-técnica)
+9. [Datos Requeridos](#9-datos-requeridos)
+10. [Costos](#10-costos)
+11. [Requisitos de Implementación](#11-requisitos-de-implementación)
+12. [Plan de Implementación](#12-plan-de-implementación)
+13. [Limitaciones](#13-limitaciones)
+14. [Próximos Pasos](#14-próximos-pasos)
+
+---
+
+## 1. Resumen Ejecutivo
+
+**Bot de Telegram para el equipo de Admisión** que responde consultas sobre obras sociales de forma instantánea.
+
+| Aspecto | Detalle |
+|---------|---------|
+| Tecnología | Búsqueda estructurada en base de datos (sin IA) |
+| Tiempo de respuesta | < 100 ms |
+| Disponibilidad | 24/7 |
+| Escalabilidad | Hasta 200+ obras sociales |
+| Usuarios | Equipo de admisión |
+
+---
+
+## 2. Problema a Resolver
+
+### Situación actual
+- El equipo de admisión consulta información de obras sociales múltiples veces al día
+- La información está dispersa en:
+  - Manuales impresos
+  - Archivos compartidos
+  - Conocimiento de compañeros
+  - Consultas telefónicas a las obras sociales
+- Cada consulta interrumpe el flujo de trabajo
+- Riesgo de información desactualizada
+
+### Impacto
+- Tiempo perdido buscando información
+- Errores por datos desactualizados
+- Dependencia del conocimiento individual
+- Inconsistencia en procedimientos
+
+---
+
+## 3. Solución Propuesta
+
+### ¿Qué es?
+Un bot de Telegram que centraliza toda la información de obras sociales en un solo lugar, accesible al instante desde el celular o computadora.
+
+### ¿Qué hace?
+- Responde consultas sobre documentación, teléfonos, mails, plazos y coseguros
+- Muestra alertas cuando hay restricciones temporales (falta de pago, convenio suspendido)
+- Registra todas las consultas para análisis y mejora continua
+
+### ¿Cómo funciona?
+```
+Empleado escribe: "internación ensalud"
+                    ↓
+Bot responde (instantáneo):
+┌─────────────────────────────────────────────┐
+│ 🏥 INTERNACIÓN - ENSALUD                    │
+│                                             │
+│ 📄 Documentación: DNI, Carnet de afiliación │
+│ 📧 Mail denuncia: auditoria@ensalud.org     │
+│ ⏰ Plazo: Dentro de las 24 horas            │
+│ 📞 Teléfono: 11-66075765                    │
+│                                             │
+│ ⚠️ Internación programada requiere          │
+│    autorización PREVIA.                     │
+└─────────────────────────────────────────────┘
+```
+
+### Escalabilidad
+- Diseñado para crecer de 3 obras sociales iniciales hasta 200+
+- Agregar una nueva obra social = cargar sus datos en la base
+- Sin límite de usuarios simultáneos
+
+### ¿Por qué sin IA?
+
+| Aspecto | Bot SQL (este) | Bot con IA |
+|---------|----------------|------------|
+| Precisión | 100% (datos exactos) | ~90% (puede alucinar) |
+| Velocidad | < 100 ms | 1-3 segundos |
+| Costo operación | Mínimo | Mayor (API de IA) |
+
+Para datos estructurados y conocidos → Bot SQL es la mejor opción.
+
+---
+
+## 4. Funcionalidades
+
+### 4.1 Consultas básicas (todos los usuarios)
+| Comando | Descripción |
+|---------|-------------|
+| `ambulatorio [OS]` | Info de ingreso ambulatorio/turnos |
+| `internación [OS]` | Info de internación |
+| `guardia [OS]` | Info de guardia |
+| `traslados [OS]` | Info de traslados |
+| `coseguros [OS]` | Valores de coseguros por plan |
+
+### 4.2 Comandos de supervisor
+| Comando | Descripción |
+|---------|-------------|
+| `/restriccion OS TIPO "MENSAJE" [PERMITIDOS]` | Agregar restricción temporal |
+| `/quitar_restriccion OS [TIPO]` | Quitar restricción |
+| `/restricciones [OS]` | Ver restricciones activas |
+| `/reporte` | Ver reporte semanal de uso |
+
+### 4.3 Reporte de problemas (todos los usuarios)
+| Comando | Descripción |
+|---------|-------------|
+| `/reportar "descripción del problema"` | Reportar dato faltante o incorrecto |
+
+---
+
+## 5. Casos de Uso Cubiertos
+
+### Por tipo de ingreso
+
+| Tipo | Información disponible |
+|------|------------------------|
+| **Ambulatorio** | Documentación, validador, portal, teléfono, coseguro |
+| **Internación** | Documentación, mail denuncia, plazo, portal, censo |
+| **Guardia** | Documentación, validador, coseguro (generalmente exento) |
+| **Traslados** | Documentación, teléfono gestión |
+| **Coseguros** | Valores por plan y tipo de prestación |
+
+### Casos especiales
+
+| Situación | Comportamiento del bot |
+|-----------|------------------------|
+| Restricción por falta de pago | Muestra alerta ⛔ + indica qué está permitido |
+| Convenio suspendido | Muestra alerta ⛔ de bloqueo total |
+| Dato no encontrado | Indica qué información falta |
+| Consulta incompleta | Pide obra social o tipo de ingreso |
+
+---
+
+## 6. Demostración
+
+### Ejemplos de consultas exitosas
+
+```
+👤 Empleado: ambulatorio ensalud
+🤖 Bot:
+🏥 AMBULATORIO - ENSALUD - Seguridad Social
+
+📄 Documentación: DNI, Carnet de afiliación
+🔗 Portal: https://ensalud.org/novedades/soy-prestador/
+📞 Teléfono: 11-66075765
+💰 Coseguro: Según plan (ver /coseguros ensalud)
+
+⚠️ Especialidades quirúrgicas requieren autorización previa.
+```
+
+```
+👤 Empleado: coseguros ensalud
+🤖 Bot:
+💰 COSEGUROS - ENSALUD
+
+📋 Por plan:
+• Delta Plus: Consulta $1456 | Especialista $2912
+• Quantum: Consulta $1820 | Especialista $3640
+
+🆓 Exentos de coseguro:
+• HIV
+• Oncología
+• Internación de guardia
+```
+
+### Ejemplos con restricciones
+
+```
+👤 Empleado: internación ensalud
+🤖 Bot:
+⛔ ATENCIÓN: ENSALUD tiene pagos pendientes.
+   Solo se permite ingreso por GUARDIA.
+
+🏥 INTERNACIÓN - ENSALUD
+[resto de la información normal]
+```
+
+### Ejemplos de consultas incompletas
+
+```
+👤 Empleado: hola
+🤖 Bot:
+Necesito más información para ayudarte.
+Por favor indicá:
+• Obra social (ENSALUD, ASI, IOSFA, etc.)
+• Tipo de ingreso (ambulatorio, internación, guardia, traslados)
+
+Ejemplo: "internación ensalud"
+```
+
+---
+
+## 7. Sistema de Mejora Continua
+
+El sistema tiene 3 componentes que trabajan juntos:
+
+### 7.1 LOGS (Automático)
+
+Cada consulta se registra automáticamente en la base de datos:
+
+| Campo | Descripción | Ejemplo |
+|-------|-------------|---------|
+| `fecha` | Timestamp de la consulta | 2026-02-03 14:30:00 |
+| `user_id` | ID de Telegram del usuario | 123456789 |
+| `texto` | Texto exacto del usuario | "internacion ensalud" |
+| `obra_social` | OS detectada (o NULL) | ENSALUD |
+| `tipo_ingreso` | Tipo detectado (o NULL) | internacion |
+| `exito` | 1 = exitosa, 0 = fallida | 1 |
+
+**¿Cuándo es exitosa una consulta?**
+- ✅ Se detectó obra social
+- ✅ Se detectó tipo de ingreso
+- ✅ Se encontró el dato en la base
+
+**¿Cuándo falla?**
+- ❌ No se detectó obra social
+- ❌ No se detectó tipo de ingreso
+- ❌ Combinación no existe en la base
+
+### 7.2 REPORTES DE USUARIO
+
+Los empleados pueden reportar problemas directamente en el bot:
+
+```
+👤 Empleado: /reportar "ensalud cambió el mail de denuncia a nuevo@ensalud.org"
+🤖 Bot: ✅ Reporte enviado. Gracias por ayudar a mantener la info actualizada.
+```
+
+El reporte queda registrado para que el supervisor lo revise y corrija los datos.
+
+**Flujo del reporte:**
+```
+Empleado detecta error → /reportar → Se guarda en tabla reportes →
+Supervisor revisa → Corrige dato en BD → Empleado ve info correcta
+```
+
+### 7.3 MÉTRICAS (desde los logs)
+
+| Métrica | Fórmula | Objetivo 1er mes |
+|---------|---------|------------------|
+| **Tasa de éxito** | exitosas / total × 100 | > 85% |
+| **Adopción del equipo** | usuarios únicos / total empleados × 100 | > 80% |
+| **Consultas semanales** | COUNT consultas por semana | > 100 |
+| **Reportes procesados** | cerrados / totales × 100 | 100% |
+
+*Nota: Los objetivos asumen capacitación completa y datos bien cargados.*
+
+### Reporte semanal automático
+
+El supervisor puede solicitar `/reporte` y obtiene:
+
+```
+📊 REPORTE SEMANAL (27 ene - 3 feb)
+
+📈 Uso general:
+• Consultas totales: 156
+• Consultas exitosas: 142 (91%)
+• Consultas fallidas: 14 (9%)
+
+👥 Adopción:
+• Usuarios únicos: 8/12 (67%)
+
+❌ Top 5 consultas fallidas:
+1. "cama ensalud" (4 veces) → Agregar "cama" como sinónimo
+2. "osde internacion" (3 veces) → OS no cargada
+3. "swiss ambulatorio" (2 veces) → OS no cargada
+
+📝 Reportes pendientes: 2
+```
+
+### Ciclo de mejora
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    CICLO DE MEJORA                         │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│    LOGS ──────────► MÉTRICAS ──────────► ACCIONES          │
+│      │                  │                    │              │
+│      │                  │                    ▼              │
+│      │                  │           ┌───────────────┐       │
+│      │                  │           │ Agregar       │       │
+│      │                  │           │ sinónimos     │       │
+│      │                  │           │ Cargar nuevas │       │
+│      │                  │           │ OS            │       │
+│      │                  │           │ Corregir      │       │
+│      │                  │           │ datos         │       │
+│      │                  │           └───────────────┘       │
+│      │                  │                    │              │
+│      ▼                  ▼                    ▼              │
+│  ┌────────┐       ┌──────────┐        ┌───────────┐        │
+│  │Consulta│       │ Reporte  │        │ Bot       │        │
+│  │fallida │       │ semanal  │        │ mejorado  │        │
+│  └────────┘       └──────────┘        └───────────┘        │
+│      │                                       ▲              │
+│      │         REPORTES USUARIO              │              │
+│      │              │                        │              │
+│      └──────────────┴────────────────────────┘              │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 8. Arquitectura Técnica
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     TELEGRAM                                │
+│                        │                                    │
+│                        ▼                                    │
+│              ┌─────────────────┐                            │
+│              │   Bot Python    │                            │
+│              │  (bot.py)       │                            │
+│              └────────┬────────┘                            │
+│                       │                                     │
+│         ┌─────────────┼─────────────┐                       │
+│         ▼             ▼             ▼                       │
+│  ┌───────────┐ ┌───────────┐ ┌───────────┐                  │
+│  │Normalizer │ │  Query    │ │  Logger   │                  │
+│  │           │ │  Engine   │ │           │                  │
+│  └─────┬─────┘ └─────┬─────┘ └─────┬─────┘                  │
+│        │             │             │                        │
+│        └─────────────┼─────────────┘                        │
+│                      ▼                                      │
+│              ┌───────────────┐                              │
+│              │   SQLite DB   │                              │
+│              │               │                              │
+│              │ • obras_sociales                             │
+│              │ • requisitos                                 │
+│              │ • coseguros                                  │
+│              │ • sinonimos                                  │
+│              │ • restricciones                              │
+│              │ • consultas_log                              │
+│              │ • reportes                                   │
+│              └───────────────┘                              │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Componentes
+
+| Componente | Función |
+|------------|---------|
+| **Bot** | Recibe mensajes de Telegram, orquesta respuesta |
+| **Normalizer** | Traduce sinónimos ("turnos" → "ambulatorio") |
+| **Query Engine** | Busca en BD, aplica restricciones, formatea |
+| **Logger** | Registra cada consulta para métricas |
+| **SQLite** | Base de datos local, sin dependencias externas |
+
+---
+
+## 9. Datos Requeridos
+
+Para cargar cada obra social se necesita:
+
+### Información básica
+| Campo | Ejemplo |
+|-------|---------|
+| Código | ENSALUD |
+| Nombre completo | ENSALUD - Seguridad Social |
+| Tipo | Sindical / Prepaga / Estatal |
+
+### Por tipo de ingreso
+| Campo | Ambulatorio | Internación | Guardia | Traslados |
+|-------|-------------|-------------|---------|-----------|
+| Documentación | ✅ | ✅ | ✅ | ✅ |
+| Validador/Portal | ✅ | ✅ | ✅ | - |
+| Mail denuncia | - | ✅ | - | - |
+| Plazo denuncia | - | ✅ | - | - |
+| Teléfono | ✅ | ✅ | ✅ | ✅ |
+| Coseguro | ✅ | - | ✅ | - |
+| Notas especiales | ✅ | ✅ | ✅ | ✅ |
+
+### Coseguros (si aplica)
+| Campo | Ejemplo |
+|-------|---------|
+| Plan | Delta Plus |
+| Tipo prestación | Consulta / Especialista / Práctica |
+| Valor | $1456 |
+| Exentos | HIV, Oncología |
+
+---
+
+## 10. Costos
+
+### Costo de desarrollo
+- Ya incluido en el proyecto actual
+
+### Costo de normalización de datos (único, primer mes)
+
+Para cargar las ~200 obras sociales se necesita:
+
+| Tarea | Descripción | Costo |
+|-------|-------------|-------|
+| **Extracción con LLM** | Usar IA para extraer datos estructurados de PDFs/docs | Costo de API (tokens) |
+| **Control manual** | Validar y corregir datos extraídos | Horas de trabajo |
+
+**Proceso de normalización:**
+```
+Documentos dispersos          →    Tablas estructuradas
+(PDFs, mails, manuales)            (mismo formato para todas)
+
+┌──────────────────┐    ┌──────────────┐    ┌──────────────┐
+│ PDF normativa OS │───►│ LLM extrae   │───►│ Supervisor   │
+│ Mail de auditoría│    │ campos clave │    │ valida datos │
+│ Manual interno   │    └──────────────┘    └──────────────┘
+└──────────────────┘           │                    │
+                               ▼                    ▼
+                        ┌──────────────────────────────┐
+                        │   Base de datos uniforme     │
+                        │   (misma estructura para     │
+                        │    todas las OS)             │
+                        └──────────────────────────────┘
+```
+
+**¿Por qué es necesario?**
+- Cada OS envía su información en formatos diferentes
+- La normalización permite que una sola query sirva para cualquier OS
+- Sin esto, habría que programar lógica diferente para cada OS
+
+### Costo de operación mensual
+
+| Componente | Detalle |
+|------------|---------|
+| Servidor | Puede correr en cualquier PC encendida o VPS básico |
+| Base de datos | SQLite (incluido, sin costo) |
+| API de IA | No usa IA en operación |
+| Telegram | Gratis |
+
+### Opciones de hosting
+
+| Opción | Características |
+|--------|-----------------|
+| PC del hospital | Sin costo adicional, requiere estar encendida |
+| VPS básico | DigitalOcean, Linode, etc. |
+| Railway/Render | Sin mantenimiento |
+
+---
+
+## 11. Requisitos de Implementación
+
+### Técnicos
+| Requisito | Detalle |
+|-----------|---------|
+| Python | 3.10 o superior |
+| RAM | 512 MB mínimo |
+| Disco | 100 MB |
+| Internet | Conexión estable |
+
+### De datos
+| Requisito | Responsable |
+|-----------|-------------|
+| Información de cada OS | Equipo de admisión / Enlace |
+| Validación de datos | Supervisor |
+| Actualización periódica | Supervisor |
+
+### Organizacionales
+| Requisito | Detalle |
+|-----------|---------|
+| Token de Telegram | Crear bot con @BotFather |
+| Definir supervisores | Quiénes pueden cargar restricciones |
+| Capacitación | 30 minutos con el equipo |
+
+---
+
+## 12. Plan de Implementación
+
+### Fase 1: Normalización de datos y piloto (4 semanas)
+
+**Semanas 1-2: Relevamiento y carga**
+- [ ] Recolectar documentos de cada OS (PDFs, mails, manuales)
+- [ ] Extraer datos con LLM hacia formato estructurado
+- [ ] Cargar en tablas normalizadas (misma estructura para todas)
+- [ ] Validación inicial por supervisor
+
+**Semanas 3-4: Validación y piloto**
+- [ ] Equipo de admisión valida datos cargados
+- [ ] Prueba con 2-3 usuarios piloto (con todas las OS cargadas)
+- [ ] Ajustar sinónimos según uso real
+- [ ] Corregir errores detectados
+
+### Fase 2: Producción (2 semanas)
+- [ ] Desplegar para todo el equipo de admisión
+- [ ] Capacitación grupal (30 min)
+- [ ] Definir supervisores
+- [ ] Activar logs y métricas
+
+### Fase 3: Expansión (continuo)
+- [ ] Cargar nuevas OS según demanda (mismo proceso de normalización)
+- [ ] Revisar métricas semanalmente
+- [ ] Agregar sinónimos según consultas fallidas
+- [ ] Actualizar datos cuando cambian
+
+---
+
+## 13. Limitaciones
+
+| Limitación | Implicancia |
+|------------|-------------|
+| Solo responde datos cargados | Si no está en la BD, dice "no tengo información" |
+| Formato semi-estructurado | Mejor resultado con "internación ensalud" que con preguntas largas |
+| Sin interpretación | No entiende contexto complejo ni preguntas ambiguas |
+| Actualización manual | Los datos deben cargarse manualmente cuando cambian |
+
+### Mitigaciones
+- Los sinónimos permiten variaciones ("turnos" = "ambulatorio")
+- El sistema de reportes permite identificar datos faltantes
+- Las métricas muestran qué consultas fallan para mejorar
+
+---
+
+## 14. Próximos Pasos
+
+### Inmediatos
+1. **Aprobación** - Validar esta propuesta con Patricia
+2. **Demo en vivo** - Mostrar funcionamiento con casos reales
+3. **Definir alcance** - Cuántas OS cargar en Fase 1
+
+### Corto plazo (Fase 1)
+4. **Relevamiento** - Recolectar docs de cada OS
+5. **Normalización** - Extraer y estructurar datos (LLM + validación)
+6. **Piloto** - Probar con 2-3 usuarios (con todas las OS cargadas)
+
+### Mediano plazo (Fases 2-3)
+7. **Capacitación** - Sesión de 30 min con todo el equipo
+8. **Producción** - Despliegue completo
+9. **Expansión** - Cargar nuevas OS con mismo proceso
+
+---
+
+## 15. Propuesta Comercial
+
+### 15.1 Timeline (Gantt)
+
+```
+SEMANA          1    2    3    4    5    6    7    8    ...
+                ├────┼────┼────┼────┼────┼────┼────┼────┼────
+FASE 1: IMPLEMENTACIÓN
+├─ Relevamiento ████
+├─ Extracción   ████████
+├─ Validación        ████████
+├─ Piloto                 ████████
+
+FASE 2: PRODUCCIÓN
+├─ Deploy                      ████
+├─ Capacitación                     ██
+├─ Go-live                          ████
+
+FASE 3: MANTENIMIENTO
+└─ Soporte continuo                      ████████████...
+```
+
+### 15.2 Esfuerzo por Fase
+
+#### Fase 1: Implementación (4 semanas)
+
+| Tarea | Responsable | Horas Hernán | Horas Cliente |
+|-------|-------------|--------------|---------------|
+| Setup inicial (bot, DB) | Hernán | 8 | - |
+| Relevamiento docs | Cliente + Hernán | 4 | 8 |
+| Extracción LLM (~0.5 hs/OS) | Hernán | **0.5 × N** | - |
+| Validación datos | Cliente | 2 | **0.25 × N** |
+| Ajuste sinónimos | Hernán | 4 | - |
+| Coordinación piloto | Ambos | 4 | 4 |
+| **Subtotal Fase 1** | | **22 + 0.5×N** | **12 + 0.25×N** |
+
+*N = cantidad de obras sociales*
+
+#### Fase 2: Producción (2 semanas)
+
+| Tarea | Responsable | Horas Hernán | Horas Cliente |
+|-------|-------------|--------------|---------------|
+| Deploy servidor | Hernán | 4 | - |
+| Capacitación equipo | Hernán | 2 | 4 (asistir) |
+| Config supervisores | Hernán + Cliente | 1 | 1 |
+| Activar métricas | Hernán | 2 | - |
+| **Subtotal Fase 2** | | **9** | **5** |
+
+#### Fase 3: Mantenimiento (mensual)
+
+| Tarea | Responsable | Horas/mes Hernán | Horas/mes Cliente |
+|-------|-------------|------------------|-------------------|
+| Revisión métricas | Hernán | 2 | - |
+| Carga nuevas OS | Hernán | 0.5 × nuevas | validar |
+| Ajuste sinónimos | Hernán | 1 | reportar |
+| Soporte/bug fixes | Hernán | 2 | - |
+| **Subtotal mensual** | | **~5-8** | **~2** |
+
+### 15.3 Ejemplo de Cálculo (200 OS)
+
+| Concepto | Cálculo | Total |
+|----------|---------|-------|
+| **FASE 1** | | |
+| Horas fijas Hernán | 22 hs | 22 hs |
+| Horas por OS (200) | 0.5 × 200 | 100 hs |
+| **Subtotal Fase 1** | | **122 hs** |
+| | | |
+| **FASE 2** | | |
+| Horas fijas | 9 hs | **9 hs** |
+| | | |
+| **TOTAL IMPLEMENTACIÓN** | | **131 hs** |
+| | | |
+| **MANTENIMIENTO** | | |
+| Por mes | ~5-8 hs | **~6 hs/mes** |
+
+### 15.4 Tarifa y Costos
+
+#### Valor hora
+
+| Concepto | Valor |
+|----------|-------|
+| **Tarifa hora** | $40.000 ARS (~$27 USD) |
+
+*Las horas incluyen costos de LLM (Claude Pro) y procesamiento de datos.*
+
+#### Cálculo para 200 obras sociales
+
+| Fase | Horas | Costo ARS | Costo USD |
+|------|-------|-----------|-----------|
+| **Fase 1** (implementación) | 122 hs | $4.880.000 | ~$3.330 |
+| **Fase 2** (producción) | 9 hs | $360.000 | ~$245 |
+| **TOTAL IMPLEMENTACIÓN** | **131 hs** | **$5.240.000** | **~$3.575** |
+| | | | |
+| **Mantenimiento** (mensual) | ~6 hs | ~$240.000 | ~$165 |
+
+#### Otros costos (opcionales)
+
+| Concepto | Costo |
+|----------|-------|
+| **Hosting VPS** | ~$5-10 USD/mes (o servidor propio = $0) |
+| **Telegram** | Gratis |
+
+### 15.5 Responsabilidades
+
+| Parte | Compromiso | Entregable |
+|-------|------------|------------|
+| **Hernán** | Desarrollo, extracción, deploy, soporte | Bot funcionando con datos cargados |
+| **Patricia/Enlace** | Proveer docs de cada OS | PDFs, mails, manuales por OS |
+| **Supervisor** | Validar datos, gestionar restricciones | Datos verificados, alertas activas |
+| **Equipo Admisión** | Usar bot, reportar errores | Feedback, uso real |
+
+### 15.6 Flujo de Trabajo
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     FLUJO DE IMPLEMENTACIÓN                         │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  CLIENTE                    HERNÁN                                  │
+│  ───────                    ──────                                  │
+│                                                                     │
+│  1. Provee docs OS ────────► 2. Extrae con LLM                     │
+│                                      │                              │
+│                                      ▼                              │
+│  4. Valida datos ◄──────── 3. Carga en BD                          │
+│         │                                                           │
+│         ▼                                                           │
+│  ¿Correcto? ──NO──────────► 5. Corrige                             │
+│         │                          │                                │
+│        SI                          │                                │
+│         │                          │                                │
+│         ▼                          ▼                                │
+│  6. Aprueba ──────────────► 7. Siguiente OS                        │
+│                                                                     │
+│  [Repetir para cada OS]                                             │
+│                                                                     │
+│  8. Piloto (2-3 usuarios) ─► 9. Ajustes finales                    │
+│                                      │                              │
+│                                      ▼                              │
+│  10. Capacitación ◄──────── 11. Deploy producción                  │
+│         │                                                           │
+│         ▼                                                           │
+│  12. GO LIVE ────────────────────────────────────────────►         │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 15.7 Modelos de Contratación
+
+| Modelo | Descripción | Mejor para |
+|--------|-------------|------------|
+| **A) Por hora** | Se factura horas trabajadas | Proyectos flexibles |
+| **B) Por OS** | Precio fijo por cada OS cargada | Presupuesto predecible |
+| **C) Paquete** | Precio cerrado por fase | Claridad total |
+| **D) Mixto** | Fijo por fase + variable por OS | Balance |
+
+#### Ejemplo Modelo D (Mixto):
+
+| Concepto | Precio |
+|----------|--------|
+| Fase 1 fijo (setup, piloto) | $XXX |
+| Por cada OS cargada | $YY |
+| Fase 2 (producción) | $ZZZ |
+| Mantenimiento mensual | $WW/mes |
+
+*Los valores se definen según tarifa hora de Hernán.*
+
+### 15.8 Condiciones para el Éxito
+
+| Requisito | Responsable | Impacto si falta |
+|-----------|-------------|------------------|
+| Docs de cada OS disponibles | Cliente | Demora en carga |
+| Validación en <48hs | Cliente | Bloquea avance |
+| Servidor disponible | Cliente/Hernán | No puede deployar |
+| Supervisores definidos | Cliente | Sin gestión restricciones |
+| Tiempo para capacitación | Cliente | Baja adopción |
+
+---
+
+## Contacto Técnico
+
+Para consultas sobre implementación: **Hernán**
+
+---
+
+*Documento generado: Febrero 2026*
+*Versión: Escenario 2 - Bot SQL sin IA*
