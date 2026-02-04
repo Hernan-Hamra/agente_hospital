@@ -23,12 +23,12 @@ El bot entiende preguntas simples con **dos elementos clave**:
 
 ### 📋 INGRESO AMBULATORIO / TURNOS
 
-| Pregunta | Qué obtiene |
-|----------|-------------|
+| Pregunta              | Qué obtiene                    |
+|-----------------------|--------------------------------|
 | `ambulatorio ensalud` | Checklist completo ambulatorio |
-| `turnos asi` | Checklist completo ambulatorio |
-| `consulta iosfa` | Checklist completo ambulatorio |
-| `coseguros ensalud` | Valores de coseguro por plan |
+| `turnos asi`          | Checklist completo ambulatorio |
+| `consulta iosfa`      | Checklist completo ambulatorio |
+| `coseguros ensalud`   | Valores de coseguro por plan   |
 
 **Información que devuelve:**
 - Documentación requerida (DNI, credencial)
@@ -41,11 +41,11 @@ El bot entiende preguntas simples con **dos elementos clave**:
 
 ### 🏥 INTERNACIÓN
 
-| Pregunta | Qué obtiene |
-|----------|-------------|
+| Pregunta              | Qué obtiene                    |
+|-----------------------|--------------------------------|
 | `internación ensalud` | Checklist completo internación |
-| `internación asi` | Checklist completo internación |
-| `cirugía iosfa` | Checklist completo internación |
+| `internación asi`     | Checklist completo internación |
+| `cirugía iosfa`       | Checklist completo internación |
 
 **Información que devuelve:**
 - Documentación requerida
@@ -58,10 +58,10 @@ El bot entiende preguntas simples con **dos elementos clave**:
 
 ### 🚨 GUARDIA
 
-| Pregunta | Qué obtiene |
-|----------|-------------|
-| `guardia ensalud` | Checklist completo guardia |
-| `urgencia asi` | Checklist completo guardia |
+| Pregunta           | Qué obtiene              |
+|--------------------|--------------------------|
+| `guardia ensalud`  | Checklist completo guardia |
+| `urgencia asi`     | Checklist completo guardia |
 | `emergencia iosfa` | Checklist completo guardia |
 
 **Información que devuelve:**
@@ -74,11 +74,11 @@ El bot entiende preguntas simples con **dos elementos clave**:
 
 ### 🚑 TRASLADOS
 
-| Pregunta | Qué obtiene |
-|----------|-------------|
+| Pregunta            | Qué obtiene                  |
+|---------------------|------------------------------|
 | `traslados ensalud` | Checklist completo traslados |
-| `derivación asi` | Checklist completo traslados |
-| `ambulancia iosfa` | Checklist completo traslados |
+| `derivación asi`    | Checklist completo traslados |
+| `ambulancia iosfa`  | Checklist completo traslados |
 
 **Información que devuelve:**
 - Documentación requerida
@@ -89,11 +89,11 @@ El bot entiende preguntas simples con **dos elementos clave**:
 
 ### 💰 COSEGUROS
 
-| Pregunta | Qué obtiene |
-|----------|-------------|
+| Pregunta            | Qué obtiene                   |
+|---------------------|-------------------------------|
 | `coseguros ensalud` | Valores por plan y prestación |
-| `copago asi` | Valores por plan y prestación |
-| `precios iosfa` | Valores por plan y prestación |
+| `copago asi`        | Valores por plan y prestación |
+| `precios iosfa`     | Valores por plan y prestación |
 
 **Información que devuelve:**
 - Planes disponibles
@@ -107,19 +107,19 @@ El bot entiende preguntas simples con **dos elementos clave**:
 El bot entiende estas variaciones:
 
 ### Tipo de Ingreso
-| Escribe | El bot entiende |
-|---------|-----------------|
-| ambulatorio, turno, turnos, consulta | Ambulatorio |
-| internación, internar, internado, cirugía, cama | Internación |
-| guardia, urgencia, emergencia | Guardia |
-| traslado, traslados, derivación, ambulancia | Traslados |
+| Escribe                                        | El bot entiende |
+|------------------------------------------------|-----------------|
+| ambulatorio, turno, turnos, consulta           | Ambulatorio     |
+| internación, internar, internado, cirugía, cama | Internación     |
+| guardia, urgencia, emergencia                  | Guardia         |
+| traslado, traslados, derivación, ambulancia    | Traslados       |
 
 ### Obras Sociales
-| Escribe | El bot entiende |
-|---------|-----------------|
-| ensalud, en salud | ENSALUD |
-| asi, asi salud | ASI |
-| iosfa, fuerzas armadas | IOSFA |
+| Escribe                | El bot entiende |
+|------------------------|-----------------|
+| ensalud, en salud      | ENSALUD         |
+| asi, asi salud         | ASI             |
+| iosfa, fuerzas armadas | IOSFA           |
 
 ---
 
@@ -155,10 +155,10 @@ El bot entiende estas variaciones:
 
 Si el bot responde "Para ayudarte necesito que me indiques...", significa que faltó información:
 
-| Mensaje del bot | Qué falta |
-|-----------------|-----------|
-| "...obra social (ENSALUD, ASI, IOSFA)" | Agregar nombre de obra social |
-| "...tipo de ingreso (ambulatorio, internación...)" | Agregar tipo de consulta |
+| Mensaje del bot                                    | Qué falta                     |
+|----------------------------------------------------|-------------------------------|
+| "...obra social (ENSALUD, ASI, IOSFA)"             | Agregar nombre de obra social |
+| "...tipo de ingreso (ambulatorio, internación...)" | Agregar tipo de consulta      |
 
 **Solución:** Reescribir la pregunta con los dos elementos.
 

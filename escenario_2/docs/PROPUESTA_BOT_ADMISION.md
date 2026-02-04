@@ -33,20 +33,20 @@ internación ensalud
 
 ## Ejemplos de Consultas
 
-| Empleado escribe | Bot responde |
-|------------------|--------------|
-| `ambulatorio ensalud` | Documentación, portal, teléfono, coseguro |
-| `internación asi` | Documentación, mail denuncia, plazo, portal |
-| `guardia iosfa` | Documentación, validador, coseguro (EXENTO) |
-| `coseguros ensalud` | Valores por plan y prestación |
-| `traslados asi` | Documentación, teléfono gestión |
+| Empleado escribe       | Bot responde                               |
+|------------------------|--------------------------------------------|
+| `ambulatorio ensalud`  | Documentación, portal, teléfono, coseguro  |
+| `internación asi`      | Documentación, mail denuncia, plazo, portal|
+| `guardia iosfa`        | Documentación, validador, coseguro (EXENTO)|
+| `coseguros ensalud`    | Valores por plan y prestación              |
+| `traslados asi`        | Documentación, teléfono gestión            |
 
 ### Cuando falta información
-| Empleado escribe | Bot responde |
-|------------------|--------------|
-| `hola` | "Necesito: obra social + tipo de ingreso" |
-| `ensalud` | "Necesito: tipo de ingreso (ambulatorio, internación...)" |
-| `internación` | "Necesito: obra social (ENSALUD, ASI, IOSFA)" |
+| Empleado escribe | Bot responde                                             |
+|------------------|----------------------------------------------------------|
+| `hola`           | "Necesito: obra social + tipo de ingreso"                |
+| `ensalud`        | "Necesito: tipo de ingreso (ambulatorio, internación...)" |
+| `internación`    | "Necesito: obra social (ENSALUD, ASI, IOSFA)"            |
 
 ---
 
@@ -65,11 +65,11 @@ Cuando una obra social tiene restricciones (ej: falta de pago), el supervisor pu
 
 ## Tiempos de Respuesta
 
-| Métrica | Valor |
-|---------|-------|
-| Tiempo de respuesta | **< 100 ms** |
-| Disponibilidad | 24/7 |
-| Usuarios simultáneos | Ilimitados |
+| Métrica              | Valor        |
+|----------------------|--------------|
+| Tiempo de respuesta  | **< 100 ms** |
+| Disponibilidad       | 24/7         |
+| Usuarios simultáneos | Ilimitados   |
 
 *Comparación: Un bot con IA tarda 1-3 segundos por respuesta*
 
@@ -79,21 +79,21 @@ Cuando una obra social tiene restricciones (ej: falta de pago), el supervisor pu
 
 ### Costo de operación mensual
 
-| Concepto | Costo |
-|----------|-------|
+| Concepto           | Costo               |
+|--------------------|---------------------|
 | Servidor (hosting) | **$0 - $5 USD/mes** |
-| Base de datos | Incluido (SQLite) |
-| API de IA | **$0** (no usa IA) |
-| **TOTAL** | **$0 - $5 USD/mes** |
+| Base de datos      | Incluido (SQLite)   |
+| API de IA          | **$0** (no usa IA)  |
+| **TOTAL**          | **$0 - $5 USD/mes** |
 
 ### Opciones de hosting
 
-| Opción | Costo | Características |
-|--------|-------|-----------------|
-| **Servidor propio** | $0 | Cualquier PC con internet |
-| **VPS básico** | ~$5 USD/mes | DigitalOcean, Linode, etc. |
-| **Heroku free** | $0 | Con limitaciones horarias |
-| **Railway** | ~$5 USD/mes | Sin mantenimiento |
+| Opción              | Costo       | Características           |
+|---------------------|-------------|---------------------------|
+| **Servidor propio** | $0          | Cualquier PC con internet |
+| **VPS básico**      | ~$5 USD/mes | DigitalOcean, Linode, etc.|
+| **Heroku free**     | $0          | Con limitaciones horarias |
+| **Railway**         | ~$5 USD/mes | Sin mantenimiento         |
 
 ---
 
@@ -138,13 +138,13 @@ python escenario_2/bot.py
 
 ## Comparación con solución con IA
 
-| Aspecto | Bot SQL (este) | Bot con IA |
-|---------|----------------|------------|
-| Costo mensual | $0-5 USD | $50-200 USD |
-| Tiempo respuesta | <100ms | 1-3 segundos |
-| Precisión | 100% (datos exactos) | ~90% (puede alucinar) |
-| Mantenimiento | Bajo | Medio |
-| Flexibilidad | Estructurado | Lenguaje natural |
+| Aspecto          | Bot SQL (este)       | Bot con IA            |
+|------------------|----------------------|-----------------------|
+| Costo mensual    | $0-5 USD             | $50-200 USD           |
+| Tiempo respuesta | <100ms               | 1-3 segundos          |
+| Precisión        | 100% (datos exactos) | ~90% (puede alucinar) |
+| Mantenimiento    | Bajo                 | Medio                 |
+| Flexibilidad     | Estructurado         | Lenguaje natural      |
 
 ---
 

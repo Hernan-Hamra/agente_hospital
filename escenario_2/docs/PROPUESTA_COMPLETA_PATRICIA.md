@@ -61,7 +61,7 @@ Un bot de Telegram que centraliza toda la información de obras sociales en un s
 ### ¿Qué hace?
 - Responde consultas sobre documentación, teléfonos, mails, plazos y coseguros
 - Muestra alertas cuando hay restricciones temporales (falta de pago, convenio suspendido)
-- Registra todas las consultas para análisis y mejora continua
+- Registra todas las consultas para análisis, y mejora continua
 
 ### ¿Cómo funciona?
 ```
@@ -101,26 +101,41 @@ Para datos estructurados y conocidos → Bot SQL es la mejor opción.
 ## 4. Funcionalidades
 
 ### 4.1 Consultas básicas (todos los usuarios)
-| Comando              | Descripción                        |
-|----------------------|------------------------------------|
-| `ambulatorio [OS]`   | Info de ingreso ambulatorio/turnos |
-| `internación [OS]`   | Info de internación                |
-| `guardia [OS]`       | Info de guardia                    |
-| `traslados [OS]`     | Info de traslados                  |
-| `coseguros [OS]`     | Valores de coseguros por plan      |
+| Comando            | Descripción                        |
+|--------------------|------------------------------------|
+| `ambulatorio [OS]` | Info de ingreso ambulatorio/turnos |
+| `internación [OS]` | Info de internación                |
+| `guardia [OS]`     | Info de guardia                    |
+| `traslados [OS]`   | Info de traslados                  |
+| `coseguros [OS]`   | Valores de coseguros por plan      |
 
-### 4.2 Comandos de supervisor
-| Comando                                        | Descripción                  |
-|------------------------------------------------|------------------------------|
-| `/restriccion OS TIPO "MENSAJE" [PERMITIDOS]`  | Agregar restricción temporal |
-| `/quitar_restriccion OS [TIPO]`                | Quitar restricción           |
-| `/restricciones [OS]`                          | Ver restricciones activas    |
-| `/reporte`                                     | Ver reporte semanal de uso   |
+### 4.2 Comandos de supervisor (requieren código)
+
+Los comandos de supervisor requieren un **código PIN** que provee Hernán. Esto permite que cualquier usuario autorizado pueda ejecutarlos sin necesidad de configuración especial.
+
+| Comando                         | Descripción                  |
+|---------------------------------|------------------------------|
+| `/restriccion:PIN:OS:"MENSAJE"` | Agregar restricción temporal |
+| `/quitar_restriccion:PIN:OS`    | Quitar restricción           |
+| `/restricciones:PIN`            | Ver restricciones activas    |
+| `/reporte:PIN`                  | Ver reporte semanal + CSV    |
+
+**Ejemplo de uso:**
+```
+/restriccion:7842:ENSALUD:"Pagos pendientes desde enero. Solo se permite GUARDIA."
+```
+
+**Seguridad:**
+- El código es un PIN numérico de 4 dígitos (ej: 7842)
+- Patricia decide a quién compartir el código
+- Si se filtra, Hernán lo cambia en minutos
 
 ### 4.3 Reporte de problemas (todos los usuarios)
-| Comando                                | Descripción                          |
-|----------------------------------------|--------------------------------------|
-| `/reportar "descripción del problema"` | Reportar dato faltante o incorrecto  |
+| Comando                                | Descripción                         |
+|----------------------------------------|-------------------------------------|
+| `/reportar "descripción del problema"` | Reportar dato faltante o incorrecto |
+
+**Notificación automática:** Cuando un usuario reporta un problema, se envía automáticamente un mail a Hernán con el detalle para su corrección.
 
 ---
 
@@ -214,14 +229,14 @@ El sistema tiene 3 componentes que trabajan juntos:
 
 Cada consulta se registra automáticamente en la base de datos:
 
-| Campo         | Descripción                  | Ejemplo                |
-|---------------|------------------------------|------------------------|
-| `fecha`       | Timestamp de la consulta     | 2026-02-03 14:30:00    |
-| `user_id`     | ID de Telegram del usuario   | 123456789              |
-| `texto`       | Texto exacto del usuario     | "internacion ensalud"  |
-| `obra_social` | OS detectada (o NULL)        | ENSALUD                |
-| `tipo_ingreso`| Tipo detectado (o NULL)      | internacion            |
-| `exito`       | 1 = exitosa, 0 = fallida     | 1                      |
+| Campo         | Descripción                | Ejemplo               |
+|---------------|----------------------------|-----------------------|
+| `fecha`       | Timestamp de la consulta   | 2026-02-03 14:30:00   |
+| `user_id`     | ID de Telegram del usuario | 123456789             |
+| `texto`       | Texto exacto del usuario   | "internacion ensalud" |
+| `obra_social` | OS detectada (o NULL)      | ENSALUD               |
+| `tipo_ingreso`| Tipo detectado (o NULL)    | internacion           |
+| `exito`       | 1 = exitosa, 0 = fallida   | 1                     |
 
 **¿Cuándo es exitosa una consulta?**
 - ✅ Se detectó obra social
@@ -242,30 +257,35 @@ Los empleados pueden reportar problemas directamente en el bot:
 🤖 Bot: ✅ Reporte enviado. Gracias por ayudar a mantener la info actualizada.
 ```
 
-El reporte queda registrado para que el supervisor lo revise y corrija los datos.
+El reporte queda registrado y **se envía automáticamente un mail a Hernán** para su corrección.
 
 **Flujo del reporte:**
 ```
-Empleado detecta error → /reportar → Se guarda en tabla reportes →
-Supervisor revisa → Corrige dato en BD → Empleado ve info correcta
+Empleado detecta error → /reportar → Se guarda en tabla reportes
+                                   → Mail automático a Hernán
+                                   → Hernán corrige dato en BD
+                                   → Empleado ve info correcta
 ```
 
 ### 7.3 MÉTRICAS (desde los logs)
 
-| Métrica                  | Fórmula                                  | Objetivo 1er mes |
-|--------------------------|------------------------------------------|------------------|
-| **Tasa de éxito**        | exitosas / total × 100                   | > 85%            |
-| **Adopción del equipo**  | usuarios únicos / total empleados × 100  | > 80%            |
-| **Consultas semanales**  | COUNT consultas por semana               | > 100            |
-| **Reportes procesados**  | cerrados / totales × 100                 | 100%             |
+| Métrica                 | Fórmula                                 | Objetivo 1er mes |
+|-------------------------|-----------------------------------------|------------------|
+| **Tasa de éxito**       | exitosas / total × 100                  | > 85%            |
+| **Adopción del equipo** | usuarios únicos / total empleados × 100 | > 80%            |
+| **Consultas semanales** | COUNT consultas por semana              | > 100            |
+| **Reportes procesados** | cerrados / totales × 100                | 100%             |
 
 *Nota: Los objetivos asumen capacitación completa y datos bien cargados.*
 
-### Reporte semanal automático
+### Reporte semanal
 
-El supervisor puede solicitar `/reporte` y obtiene:
+El supervisor puede solicitar `/reporte:PIN` y obtiene:
 
 ```
+👤 Supervisor: /reporte:7842
+
+🤖 Bot:
 📊 REPORTE SEMANAL (27 ene - 3 feb)
 
 📈 Uso general:
@@ -282,7 +302,14 @@ El supervisor puede solicitar `/reporte` y obtiene:
 3. "swiss ambulatorio" (2 veces) → OS no cargada
 
 📝 Reportes pendientes: 2
+
+📎 Archivo adjunto: reporte_2026-02-03.csv
 ```
+
+**Archivo CSV descargable:** El bot envía además un archivo CSV que se puede abrir en Excel con:
+- Hoja 1: Resumen de métricas
+- Hoja 2: Detalle de consultas fallidas
+- Hoja 3: Reportes de usuarios pendientes
 
 ### Ciclo de mejora
 
@@ -400,17 +427,30 @@ Para cargar cada obra social se necesita:
 
 ## 10. Costos
 
-### Costo de desarrollo
-- Ya incluido en el proyecto actual
+### Costo de desarrollo (ABSORBIDO - Fase 0)
+
+| Concepto                        | Horas | Valor mercado  | Costo cliente |
+|---------------------------------|-------|----------------|---------------|
+| Análisis del problema           | 4 hs  | $160.000       | $0            |
+| Diseño de arquitectura          | 4 hs  | $160.000       | $0            |
+| Desarrollo bot base (Python)    | 12 hs | $480.000       | $0            |
+| Base de datos (SQLite schema)   | 4 hs  | $160.000       | $0            |
+| Demo funcional con datos prueba | 6 hs  | $240.000       | $0            |
+| Documentación técnica           | 4 hs  | $160.000       | $0            |
+| Tests y validación              | 6 hs  | $240.000       | $0            |
+| **TOTAL FASE 0**                | **40 hs** | **$1.600.000** | **$0**    |
+
+**El desarrollo del bot está 100% absorbido.** El cliente ahorra $1.600.000 ARS (~$1.090 USD).
+Solo paga por la carga y validación de datos (Fases 1-3).
 
 ### Costo de normalización de datos (único, primer mes)
 
 Para cargar las ~200 obras sociales se necesita:
 
-| Tarea                  | Descripción                                           | Costo               |
-|------------------------|-------------------------------------------------------|---------------------|
+| Tarea                  | Descripción                                           | Costo                 |
+|------------------------|-------------------------------------------------------|-----------------------|
 | **Extracción con LLM** | Usar IA para extraer datos estructurados de PDFs/docs | Costo de API (tokens) |
-| **Control manual**     | Validar y corregir datos extraídos                    | Horas de trabajo    |
+| **Control manual**     | Validar y corregir datos extraídos                    | Horas de trabajo      |
 
 **Proceso de normalización:**
 ```
@@ -482,31 +522,73 @@ Documentos dispersos          →    Tablas estructuradas
 
 ## 12. Plan de Implementación
 
-### Fase 1: Normalización de datos y piloto (4 semanas)
+### Fase 0: Desarrollo de solución (COMPLETADA - NO SE COBRA)
 
-**Semanas 1-2: Relevamiento y carga**
+**Estado: ✅ Finalizada (40 horas invertidas)**
+- [x] Análisis del problema (4 hs)
+- [x] Diseño de arquitectura (4 hs)
+- [x] Desarrollo del bot base - código Python (12 hs)
+- [x] Base de datos SQLite - schema (4 hs)
+- [x] Demo funcional con datos de prueba (6 hs)
+- [x] Documentación técnica (4 hs)
+- [x] Tests y validación (6 hs)
+
+**Costo para el cliente: $0** (absorbido por Hernán con Claude Pro)
+**Valor de mercado: $1.600.000 ARS (~$1.090 USD)**
+
+---
+
+### Fase 1: Carga de datos y validación (4 semanas)
+
+**Semanas 1-4: Relevamiento, extracción y validación**
 - [ ] Recolectar documentos de cada OS (PDFs, mails, manuales)
 - [ ] Extraer datos con LLM hacia formato estructurado
 - [ ] Cargar en tablas normalizadas (misma estructura para todas)
-- [ ] Validación inicial por supervisor
+- [ ] Validación con supervisor
+- [ ] **Ajustes de código:** Adaptaciones según necesidades específicas (10 hs)
+- [ ] **Correcciones de datos:** Ajustar según feedback del supervisor
 
-**Semanas 3-4: Validación y piloto**
-- [ ] Equipo de admisión valida datos cargados
-- [ ] Prueba con 2-3 usuarios piloto (con todas las OS cargadas)
+**Objetivo:** Tener TODAS las obras sociales cargadas y validadas.
+
+---
+
+### Fase 2: Prueba piloto (2 semanas)
+
+**Semanas 5-6: Prueba con usuarios reales**
+- [ ] Prueba con 2-3 usuarios piloto
+- [ ] Monitoreo de consultas fallidas
 - [ ] Ajustar sinónimos según uso real
-- [ ] Corregir errores detectados
+- [ ] **Correcciones:** Corregir errores detectados en uso real
+- [ ] Validar que los datos sean correctos
 
-### Fase 2: Producción (2 semanas)
+**Objetivo:** Detectar y corregir problemas antes del despliegue masivo.
+
+---
+
+### Fase 3: Implementación / Producción (2 semanas)
+
+**Semanas 7-8: Despliegue completo**
 - [ ] Desplegar para todo el equipo de admisión
 - [ ] Capacitación grupal (30 min)
-- [ ] Definir supervisores
+- [ ] Entregar código de supervisor a Patricia
 - [ ] Activar logs y métricas
+- [ ] Primer reporte semanal
+- [ ] **Correcciones:** Ajustes finales post-capacitación
 
-### Fase 3: Expansión (continuo)
-- [ ] Cargar nuevas OS según demanda (mismo proceso de normalización)
-- [ ] Revisar métricas semanalmente
+**Objetivo:** Bot en producción con todo el equipo usándolo.
+
+---
+
+### Fase 4: Mantenimiento (mensual, continuo)
+
+**Abono mensual**
+- [ ] Revisión de métricas y reportes semanales
+- [ ] Cargar nuevas OS según demanda
 - [ ] Agregar sinónimos según consultas fallidas
-- [ ] Actualizar datos cuando cambian
+- [ ] **Correcciones:** Actualizar datos cuando cambian
+- [ ] Soporte y corrección de bugs
+
+**Objetivo:** Mantener el bot actualizado y funcionando correctamente.
 
 ---
 
@@ -528,20 +610,32 @@ Documentos dispersos          →    Tablas estructuradas
 
 ## 14. Próximos Pasos
 
-### Inmediatos
+### Fase 0: ✅ COMPLETADA
+- Demo funcional lista
+- Documentación lista
+
+### Inmediatos (antes de Fase 1)
 1. **Aprobación** - Validar esta propuesta con Patricia
 2. **Demo en vivo** - Mostrar funcionamiento con casos reales
-3. **Definir alcance** - Cuántas OS cargar en Fase 1
+3. **Definir alcance** - Cuántas OS cargar
 
-### Corto plazo (Fase 1)
+### Fase 1: Carga de datos (4 semanas)
 4. **Relevamiento** - Recolectar docs de cada OS
-5. **Normalización** - Extraer y estructurar datos (LLM + validación)
-6. **Piloto** - Probar con 2-3 usuarios (con todas las OS cargadas)
+5. **Extracción** - Extraer y estructurar datos (LLM)
+6. **Validación** - Supervisor valida datos
+7. **Correcciones** - Ajustar según feedback
 
-### Mediano plazo (Fases 2-3)
-7. **Capacitación** - Sesión de 30 min con todo el equipo
-8. **Producción** - Despliegue completo
-9. **Expansión** - Cargar nuevas OS con mismo proceso
+### Fase 2: Prueba piloto (2 semanas)
+8. **Piloto** - Probar con 2-3 usuarios
+9. **Correcciones** - Ajustar según uso real
+
+### Fase 3: Implementación (2 semanas)
+10. **Capacitación** - Sesión de 30 min con todo el equipo
+11. **Producción** - Despliegue completo
+12. **Correcciones** - Ajustes finales
+
+### Fase 4: Mantenimiento (continuo)
+13. **Soporte** - Abono mensual con correcciones incluidas
 
 ---
 
@@ -550,75 +644,130 @@ Documentos dispersos          →    Tablas estructuradas
 ### 15.1 Timeline (Gantt)
 
 ```
-SEMANA          1    2    3    4    5    6    7    8    ...
-                ├────┼────┼────┼────┼────┼────┼────┼────┼────
-FASE 1: IMPLEMENTACIÓN
-├─ Relevamiento ████
-├─ Extracción   ████████
-├─ Validación        ████████
-├─ Piloto                 ████████
+                ANTES  1    2    3    4    5    6    7    8    ...
+                ├────┼────┼────┼────┼────┼────┼────┼────┼────┼────
+FASE 0: DESARROLLO (absorbido)
+└─ ✅ Completado ████
 
-FASE 2: PRODUCCIÓN
-├─ Deploy                      ████
-├─ Capacitación                     ██
-├─ Go-live                          ████
+FASE 1: CARGA DE DATOS (4 semanas)
+├─ Relevamiento      ████
+├─ Extracción        ████████████████
+├─ Validación             ████████████████
+├─ Correcciones           ████████████████
 
-FASE 3: MANTENIMIENTO
-└─ Soporte continuo                      ████████████...
+FASE 2: PRUEBA PILOTO (2 semanas)
+├─ Prueba 2-3 usuarios              ████████
+├─ Correcciones                          ████
+
+FASE 3: IMPLEMENTACIÓN (2 semanas)
+├─ Deploy                                     ████
+├─ Capacitación                                   ████
+├─ Correcciones                                   ████
+
+FASE 4: MANTENIMIENTO (mensual)
+└─ Soporte + Correcciones                             ████████...
 ```
+
+**Fase 0:** Ya completada (demo funcional) - NO SE COBRA
+**Fases 1-3:** 8 semanas de implementación
+**Fase 4:** Abono mensual continuo
 
 ### 15.2 Esfuerzo por Fase
 
-#### Fase 1: Implementación (4 semanas)
+#### Fase 0: Desarrollo de solución (ABSORBIDO)
 
-| Tarea                       | Responsable      | Horas Hernán   | Horas Cliente    |
-|-----------------------------|------------------|----------------|------------------|
-| Setup inicial (bot, DB)     | Hernán           | 8              | -                |
-| Relevamiento docs           | Cliente + Hernán | 4              | 8                |
-| Extracción LLM (~0.5 hs/OS) | Hernán           | **0.5 × N**    | -                |
-| Validación datos            | Cliente          | 2              | **0.25 × N**     |
-| Ajuste sinónimos            | Hernán           | 4              | -                |
-| Coordinación piloto         | Ambos            | 4              | 4                |
-| **Subtotal Fase 1**         |                  | **22 + 0.5×N** | **12 + 0.25×N**  |
+| Tarea                           | Estado        | Horas Hernán | Costo cliente |
+|---------------------------------|---------------|--------------|---------------|
+| Análisis del problema           | ✅ Completado | 4            | $0            |
+| Diseño de arquitectura          | ✅ Completado | 4            | $0            |
+| Desarrollo bot base (Python)    | ✅ Completado | 12           | $0            |
+| Base de datos (SQLite schema)   | ✅ Completado | 4            | $0            |
+| Demo funcional con datos prueba | ✅ Completado | 6            | $0            |
+| Documentación técnica           | ✅ Completado | 4            | $0            |
+| Tests y validación              | ✅ Completado | 6            | $0            |
+| **Subtotal Fase 0**             |               | **40**       | **$0**        |
+
+*Absorbido por Hernán (incluye costo Claude Pro $100 USD/mes)*
+*Valor de mercado: 40 hs × $40.000 = $1.600.000 ARS (~$1.090 USD) - NO SE COBRA*
+
+---
+
+#### Fase 1: Carga de datos y validación (4 semanas)
+
+| Tarea                        | Responsable      | Horas Hernán   | Horas Cliente  |
+|------------------------------|------------------|----------------|----------------|
+| Relevamiento docs            | Cliente + Hernán | 4              | 8              |
+| Extracción LLM (~0.5 hs/OS)  | Hernán           | **0.5 × N**    | -              |
+| Validación datos             | Cliente + Hernán | 4              | **0.25 × N**   |
+| **Ajustes de código**        | Hernán           | 10             | -              |
+| **Correcciones datos**       | Hernán           | 4              | -              |
+| **Subtotal Fase 1**          |                  | **22 + 0.5×N** | **8 + 0.25×N** |
 
 *N = cantidad de obras sociales*
+*Ajustes de código: adaptaciones según necesidades específicas detectadas durante la carga*
 
-#### Fase 2: Producción (2 semanas)
+---
 
-| Tarea               | Responsable      | Horas Hernán | Horas Cliente |
-|---------------------|------------------|--------------|---------------|
-| Deploy servidor     | Hernán           | 4            | -             |
-| Capacitación equipo | Hernán           | 2            | 4 (asistir)   |
-| Config supervisores | Hernán + Cliente | 1            | 1             |
-| Activar métricas    | Hernán           | 2            | -             |
-| **Subtotal Fase 2** |                  | **9**        | **5**         |
+#### Fase 2: Prueba piloto (2 semanas)
 
-#### Fase 3: Mantenimiento (mensual)
+| Tarea                   | Responsable | Horas Hernán | Horas Cliente |
+|-------------------------|-------------|--------------|---------------|
+| Coordinación piloto     | Ambos       | 4            | 2             |
+| Soporte usuarios piloto | Hernán      | 4            | 2             |
+| **Correcciones** (incluidas) | Hernán  | 4            | 2             |
+| **Subtotal Fase 2**     |             | **12**       | **6**         |
 
-| Tarea                | Responsable | Horas/mes Hernán | Horas/mes Cliente |
-|----------------------|-------------|------------------|-------------------|
-| Revisión métricas    | Hernán      | 2                | -                 |
-| Carga nuevas OS      | Hernán      | 0.5 × nuevas     | validar           |
-| Ajuste sinónimos     | Hernán      | 1                | reportar          |
-| Soporte/bug fixes    | Hernán      | 2                | -                 |
-| **Subtotal mensual** |             | **~5-8**         | **~2**            |
+---
+
+#### Fase 3: Implementación / Producción (2 semanas)
+
+| Tarea                        | Responsable      | Horas Hernán | Horas Cliente |
+|------------------------------|------------------|--------------|---------------|
+| Deploy servidor              | Hernán           | 4            | -             |
+| Capacitación equipo          | Hernán           | 2            | 4 (asistir)   |
+| Config supervisores          | Hernán + Cliente | 2            | 2             |
+| Activar métricas             | Hernán           | 2            | -             |
+| **Correcciones** (incluidas) | Hernán           | 2            | -             |
+| **Subtotal Fase 3**          |                  | **12**       | **6**         |
+
+---
+
+#### Fase 4: Mantenimiento (mensual - abono)
+
+| Tarea                        | Responsable | Horas/mes |
+|------------------------------|-------------|-----------|
+| Revisión métricas            | Hernán      | 2         |
+| Carga nuevas OS              | Hernán      | 2         |
+| Ajuste sinónimos             | Hernán      | 2         |
+| **Correcciones** (incluidas) | Hernán      | 2         |
+| **TOTAL MENSUAL**            |             | **8**     |
 
 ### 15.3 Ejemplo de Cálculo (200 OS)
 
-| Concepto                   | Cálculo    | Total          |
-|----------------------------|------------|----------------|
-| **FASE 1**                 |            |                |
-| Horas fijas Hernán         | 22 hs      | 22 hs          |
-| Horas por OS (200)         | 0.5 × 200  | 100 hs         |
-| **Subtotal Fase 1**        |            | **122 hs**     |
-|                            |            |                |
-| **FASE 2**                 |            |                |
-| Horas fijas                | 9 hs       | **9 hs**       |
-|                            |            |                |
-| **TOTAL IMPLEMENTACIÓN**   |            | **131 hs**     |
-|                            |            |                |
-| **MANTENIMIENTO**          |            |                |
-| Por mes                    | ~5-8 hs    | **~6 hs/mes**  |
+| Concepto                    | Cálculo   | Total        |
+|-----------------------------|-----------|--------------|
+| **FASE 0 (desarrollo)**     |           |              |
+| Horas Hernán                | 40 hs     | ~~40 hs~~    |
+| **Costo cliente Fase 0**    |           | **$0**       |
+|                             |           |              |
+| **FASE 1 (carga datos)**    |           |              |
+| Horas fijas                 | 22 hs     | 22 hs        |
+| Horas por OS (200)          | 0.5 × 200 | 100 hs       |
+| **Subtotal Fase 1**         |           | **122 hs**   |
+|                             |           |              |
+| **FASE 2 (piloto)**         |           |              |
+| Horas fijas                 | 12 hs     | **12 hs**    |
+|                             |           |              |
+| **FASE 3 (implementación)** |           |              |
+| Horas fijas                 | 12 hs     | **12 hs**    |
+|                             |           |              |
+| **TOTAL IMPLEMENTACIÓN**    |           | **146 hs**   |
+|                             |           |              |
+| **FASE 4 (mantenimiento)**  |           |              |
+| Por mes                     | 8 hs      | **8 hs/mes** |
+
+*Fase 0 (40 hs de desarrollo) = $0 para el cliente - absorbido por Hernán.*
+*Valor absorbido: $1.600.000 ARS (~$1.090 USD)*
 
 ### 15.4 Tarifa y Costos
 
@@ -632,31 +781,112 @@ FASE 3: MANTENIMIENTO
 
 #### Cálculo para 200 obras sociales
 
-| Fase                        | Horas      | Costo ARS      | Costo USD    |
-|-----------------------------|------------|----------------|--------------|
-| **Fase 1** (implementación) | 122 hs     | $4.880.000     | ~$3.330      |
-| **Fase 2** (producción)     | 9 hs       | $360.000       | ~$245        |
-| **TOTAL IMPLEMENTACIÓN**    | **131 hs** | **$5.240.000** | **~$3.575**  |
-|                             |            |                |              |
-| **Mantenimiento** (mensual) | ~6 hs      | ~$240.000      | ~$165        |
+| Fase                           | Horas      | Costo ARS      | Costo USD   |
+|--------------------------------|------------|----------------|-------------|
+| **Fase 0** (desarrollo)        | ~~40 hs~~  | ~~$1.600.000~~ | ~~$1.090~~  |
+| **Costo cliente Fase 0**       |            | **$0**         | **$0**      |
+|                                |            |                |             |
+| **Fase 1** (carga datos)       | 122 hs     | $4.880.000     | ~$3.320     |
+| **Fase 2** (piloto)            | 12 hs      | $480.000       | ~$330       |
+| **Fase 3** (implementación)    | 12 hs      | $480.000       | ~$330       |
+| **TOTAL IMPLEMENTACIÓN**       | **146 hs** | **$5.840.000** | **~$3.980** |
+|                                |            |                |             |
+| **Fase 4** (mantenimiento/mes) | 8 hs       | $320.000       | ~$220       |
+
+*Fase 0: 40 horas de desarrollo = $0 para el cliente (absorbido por Hernán con Claude Pro).*
+*El cliente ahorra $1.600.000 ARS (~$1.090 USD) en desarrollo.*
 
 #### Otros costos (opcionales)
 
-| Concepto        | Costo                                    |
-|-----------------|------------------------------------------|
-| **Hosting VPS** | ~$5-10 USD/mes (o servidor propio = $0)  |
-| **Telegram**    | Gratis                                   |
+| Concepto        | Costo                                   |
+|-----------------|-----------------------------------------|
+| **Hosting VPS** | ~$5-10 USD/mes (o servidor propio = $0) |
+| **Telegram**    | Gratis                                  |
 
-### 15.5 Responsabilidades
+---
 
-| Parte               | Compromiso                               | Entregable                         |
-|---------------------|------------------------------------------|------------------------------------|
-| **Hernán**          | Desarrollo, extracción, deploy, soporte  | Bot funcionando con datos cargados |
-| **Patricia/Enlace** | Proveer docs de cada OS                  | PDFs, mails, manuales por OS       |
-| **Supervisor**      | Validar datos, gestionar restricciones   | Datos verificados, alertas activas |
-| **Equipo Admisión** | Usar bot, reportar errores               | Feedback, uso real                 |
+### 15.5 Propuesta de Pago: Mes Vencido
 
-### 15.6 Flujo de Trabajo
+#### Modalidad
+
+El trabajo se paga **mes vencido**. El total de implementación (146 hs) se divide en 2 meses:
+
+| Mes | Trabajo realizado                        | Horas  | Pago (fin de mes)  |
+|-----|------------------------------------------|--------|-------------------|
+| 1   | Fase 1 (carga datos) + inicio Fase 2     | 73 hs  | $2.920.000        |
+| 2   | Fin Fase 2 + Fase 3 (producción)         | 73 hs  | $2.920.000        |
+|     | **TOTAL**                                | 146 hs | **$5.840.000**    |
+
+#### Flujo de pagos
+
+```
+MES 1                              MES 2                              MES 3...
+├─────────────────────────────────┼─────────────────────────────────┼────────
+│                                 │                                 │
+│  Trabajo Fase 1 + inicio F2     │  Trabajo Fase 2 + Fase 3        │  Mantenimiento
+│                                 │                                 │
+│                            PAGO 1                            PAGO 2    ABONO
+│                         $2.920.000                        $2.920.000  $320.000/mes
+```
+
+#### Condiciones
+
+1. **Pago mes vencido:** Se factura al cierre de cada mes por el trabajo realizado
+2. **Prorrateado:** Si el primer mes tiene más carga, se balancea en el segundo
+3. **OS pendientes:** Si no se completan todas las OS en los 2 meses, se agregan en el soporte mensual sin costo extra (dentro de las 8 hs)
+4. **Inicio mantenimiento:** A partir del mes 3, comienza el abono mensual de $320.000
+
+---
+
+### 15.6 Funcionalidades Fuera de Alcance (Desarrollos Adicionales)
+
+El bot base incluye todo lo documentado. Las siguientes funcionalidades **NO están incluidas** y serían desarrollos adicionales facturados por separado:
+
+#### Integraciones externas
+
+| Funcionalidad                                | Descripción                                      |
+|----------------------------------------------|--------------------------------------------------|
+| Integración con sistema de turnos            | Conexión con software de turnos del hospital     |
+| Integración con historia clínica             | Acceso a datos del paciente desde el bot         |
+| API de obras sociales en tiempo real         | Validación online directa con cada OS            |
+| Conexión con facturación/nomenclador         | Consulta de códigos y valores                    |
+
+#### Canales adicionales
+
+| Funcionalidad                                | Descripción                                      |
+|----------------------------------------------|--------------------------------------------------|
+| Bot en WhatsApp                              | Mismo bot pero en WhatsApp Business              |
+| App móvil dedicada                           | Aplicación nativa Android/iOS                    |
+
+#### Módulos avanzados
+
+| Funcionalidad                                | Descripción                                      |
+|----------------------------------------------|--------------------------------------------------|
+| Dashboard web para supervisores              | Panel con gráficos, reportes visuales, filtros   |
+| Sistema de autorizaciones previas            | Gestión de solicitudes y aprobaciones            |
+| Notificaciones automáticas                   | Alertas de vencimientos, renovaciones            |
+| Bot para pacientes                           | Consultas de cobertura para afiliados            |
+| Reportes avanzados con gráficos              | Exportación a PDF con visualizaciones            |
+
+#### Cómo se manejan
+
+- Se cotizan por separado según complejidad
+- Se pueden agregar en cualquier momento (Fase 4 en adelante)
+- Las nuevas tablas de BD se crean sin modificar el bot base
+- Se mantiene compatibilidad con lo existente
+
+**Nota:** Si durante el soporte mensual surge una necesidad que requiere desarrollo adicional, se cotiza aparte y se acuerda antes de implementar.
+
+### 15.7 Responsabilidades
+
+| Parte               | Compromiso                                          | Entregable                         |
+|---------------------|-----------------------------------------------------|------------------------------------|
+| **Hernán**          | ~~Desarrollo~~ ✅, extracción, deploy, soporte      | Bot funcionando con datos cargados |
+| **Patricia/Enlace** | Proveer docs de cada OS                             | PDFs, mails, manuales por OS       |
+| **Supervisor**      | Validar datos, gestionar restricciones              | Datos verificados, alertas activas |
+| **Equipo Admisión** | Usar bot, reportar errores                          | Feedback, uso real                 |
+
+### 15.8 Flujo de Trabajo
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -692,7 +922,7 @@ FASE 3: MANTENIMIENTO
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-### 15.7 Modelos de Contratación
+### 15.9 Modelos de Contratación
 
 | Modelo           | Descripción                      | Mejor para             |
 |------------------|----------------------------------|------------------------|
@@ -712,7 +942,7 @@ FASE 3: MANTENIMIENTO
 
 *Los valores se definen según tarifa hora de Hernán.*
 
-### 15.8 Condiciones para el Éxito
+### 15.10 Condiciones para el Éxito
 
 | Requisito                    | Responsable    | Impacto si falta             |
 |------------------------------|----------------|------------------------------|
