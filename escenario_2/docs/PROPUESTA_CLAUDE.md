@@ -440,8 +440,9 @@ Para cargar cada obra social se necesita:
 | Tests y validación              | 6 hs  | $240.000       | $0            |
 | **TOTAL FASE 0**                | **40 hs** | **$1.600.000** | **$0**    |
 
-**El desarrollo del bot está 100% absorbido.** El cliente ahorra $1.600.000 ARS (~$1.090 USD).
-Solo paga por la carga y validación de datos (Fases 1-3).
+**El desarrollo del bot está 100% absorbido.** El cliente ahorra ~$1.600.000 ARS (~$1.090 USD).
+Solo paga por la carga y validación de datos (Fases 1-3) bajo el modelo **Tiempo y Materiales**.
+Ver sección 15.4 para detalles del modelo de cotización.
 
 ### Costo de normalización de datos (único, primer mes)
 
@@ -672,7 +673,9 @@ FASE 4: MANTENIMIENTO (mensual)
 **Fases 1-3:** 8 semanas de implementación
 **Fase 4:** Abono mensual continuo
 
-### 15.2 Esfuerzo por Fase
+### 15.2 Esfuerzo Estimado por Fase
+
+> **Modelo T&M:** Las horas indicadas son estimaciones para referencia. La facturación será por horas reales trabajadas.
 
 #### Fase 0: Desarrollo de solución (ABSORBIDO)
 
@@ -742,59 +745,90 @@ FASE 4: MANTENIMIENTO (mensual)
 | **Correcciones** (incluidas) | Hernán      | 2         |
 | **TOTAL MENSUAL**            |             | **8**     |
 
-### 15.3 Ejemplo de Cálculo (200 OS)
+### 15.3 Estimación de Horas (200 OS)
 
-| Concepto                    | Cálculo   | Total        |
-|-----------------------------|-----------|--------------|
-| **FASE 0 (desarrollo)**     |           |              |
-| Horas Hernán                | 40 hs     | ~~40 hs~~    |
-| **Costo cliente Fase 0**    |           | **$0**       |
-|                             |           |              |
-| **FASE 1 (carga datos)**    |           |              |
-| Horas fijas                 | 22 hs     | 22 hs        |
-| Horas por OS (200)          | 0.5 × 200 | 100 hs       |
-| **Subtotal Fase 1**         |           | **122 hs**   |
-|                             |           |              |
-| **FASE 2 (piloto)**         |           |              |
-| Horas fijas                 | 12 hs     | **12 hs**    |
-|                             |           |              |
-| **FASE 3 (implementación)** |           |              |
-| Horas fijas                 | 12 hs     | **12 hs**    |
-|                             |           |              |
-| **TOTAL IMPLEMENTACIÓN**    |           | **146 hs**   |
-|                             |           |              |
-| **FASE 4 (mantenimiento)**  |           |              |
-| Por mes                     | 8 hs      | **8 hs/mes** |
+> **Modelo T&M:** Las horas a continuación son estimaciones. El pago final será por horas reales trabajadas.
+
+| Concepto                       | Cálculo estimado | Horas estimadas |
+|--------------------------------|------------------|-----------------|
+| **FASE 0 (desarrollo)**        |                  |                 |
+| Horas Hernán                   | 40 hs            | ~~40 hs~~       |
+| **Costo cliente Fase 0**       |                  | **$0**          |
+|                                |                  |                 |
+| **FASE 1 (carga datos)**       |                  |                 |
+| Horas fijas (setup, ajustes)   | ~22 hs           | ~22 hs          |
+| Horas por OS (~200)            | ~0.5 × 200       | ~100 hs         |
+| **Subtotal estimado Fase 1**   |                  | **~122 hs**     |
+|                                |                  |                 |
+| **FASE 2 (piloto)**            |                  |                 |
+| Horas estimadas                | ~12 hs           | **~12 hs**      |
+|                                |                  |                 |
+| **FASE 3 (implementación)**    |                  |                 |
+| Horas estimadas                | ~12 hs           | **~12 hs**      |
+|                                |                  |                 |
+| **TOTAL ESTIMADO IMPLEMENTACIÓN** |               | **~146 hs**     |
+|                                |                  |                 |
+| **FASE 4 (mantenimiento)**     |                  |                 |
+| Estimado por mes               | ~8 hs            | **~8 hs/mes**   |
 
 *Fase 0 (40 hs de desarrollo) = $0 para el cliente - absorbido por Hernán.*
-*Valor absorbido: $1.600.000 ARS (~$1.090 USD)*
+*Valor absorbido: ~$1.600.000 ARS (~$1.090 USD)*
 
-### 15.4 Tarifa y Costos
+### 15.4 Modelo de Cotización: Tiempo y Materiales (T&M)
 
-#### Valor hora
+#### ¿Qué es Tiempo y Materiales?
 
-| Concepto          | Valor                    |
-|-------------------|--------------------------|
-| **Tarifa hora**   | $40.000 ARS (~$27 USD)   |
+Este proyecto se cotiza bajo el modelo **Tiempo y Materiales (T&M)**:
 
-*Las horas incluyen costos de LLM (Claude Pro) y procesamiento de datos.*
+| Aspecto              | Descripción                                                        |
+|----------------------|--------------------------------------------------------------------|
+| **Qué se paga**      | Horas reales trabajadas × tarifa hora                              |
+| **Estimación**       | Se provee un total estimado basado en el alcance inicial           |
+| **Variaciones**      | Si el scope cambia o hay imprevistos, las horas se ajustan         |
+| **Transparencia**    | Se reportan las horas trabajadas al finalizar cada fase            |
+| **Riesgo**           | El cliente asume el riesgo de desviaciones sobre la estimación     |
 
-#### Cálculo para 200 obras sociales
+**¿Por qué este modelo?**
+- Permite flexibilidad ante cambios de alcance o imprevistos
+- No penaliza por requerimientos adicionales descubiertos durante la implementación
+- El cliente paga por el trabajo real, sin márgenes de "colchón" por riesgo
 
-| Fase                           | Horas      | Costo ARS      | Costo USD   |
-|--------------------------------|------------|----------------|-------------|
-| **Fase 0** (desarrollo)        | ~~40 hs~~  | ~~$1.600.000~~ | ~~$1.090~~  |
-| **Costo cliente Fase 0**       |            | **$0**         | **$0**      |
-|                                |            |                |             |
-| **Fase 1** (carga datos)       | 122 hs     | $4.880.000     | ~$3.320     |
-| **Fase 2** (piloto)            | 12 hs      | $480.000       | ~$330       |
-| **Fase 3** (implementación)    | 12 hs      | $480.000       | ~$330       |
-| **TOTAL IMPLEMENTACIÓN**       | **146 hs** | **$5.840.000** | **~$3.980** |
-|                                |            |                |             |
-| **Fase 4** (mantenimiento/mes) | 8 hs       | $320.000       | ~$220       |
+#### Tarifa hora
 
-*Fase 0: 40 horas de desarrollo = $0 para el cliente (absorbido por Hernán con Claude Pro).*
-*El cliente ahorra $1.600.000 ARS (~$1.090 USD) en desarrollo.*
+| Concepto          | Valor                  |
+|-------------------|------------------------|
+| **Tarifa hora**   | $40.000 ARS (~$27 USD) |
+
+*La tarifa incluye costos de LLM (Claude Pro) y procesamiento de datos.*
+
+#### Estimación para 200 obras sociales
+
+> **⚠️ IMPORTANTE:** Los valores a continuación son **estimaciones** basadas en el alcance conocido. El costo final puede variar según las horas reales trabajadas.
+
+| Fase                           | Horas estimadas | Costo estimado ARS | Costo estimado USD |
+|--------------------------------|-----------------|--------------------|--------------------|
+| **Fase 0** (desarrollo)        | ~~40 hs~~       | ~~$1.600.000~~     | ~~$1.090~~         |
+| **Costo cliente Fase 0**       | -               | **$0**             | **$0**             |
+|                                |                 |                    |                    |
+| **Fase 1** (carga datos)       | ~122 hs         | ~$4.880.000        | ~$3.320            |
+| **Fase 2** (piloto)            | ~12 hs          | ~$480.000          | ~$330              |
+| **Fase 3** (implementación)    | ~12 hs          | ~$480.000          | ~$330              |
+| **TOTAL ESTIMADO**             | **~146 hs**     | **~$5.840.000**    | **~$3.980**        |
+|                                |                 |                    |                    |
+| **Fase 4** (mantenimiento/mes) | ~8 hs           | ~$320.000          | ~$220              |
+
+*Fase 0: 40 horas de desarrollo = $0 para el cliente (absorbido por Hernán).*
+*El cliente ahorra ~$1.600.000 ARS (~$1.090 USD) en desarrollo.*
+
+#### Factores que pueden afectar la estimación
+
+| Factor                                    | Impacto posible                 |
+|-------------------------------------------|--------------------------------|
+| Cantidad real de OS distinta a 200        | ±horas proporcionales          |
+| Documentos de OS incompletos o dispersos  | +horas de relevamiento         |
+| Cambios de requerimientos durante el proyecto | +horas de ajuste           |
+| Validación más rápida de lo esperado      | -horas                         |
+| Menos correcciones necesarias             | -horas                         |
 
 #### Otros costos (opcionales)
 
@@ -805,36 +839,57 @@ FASE 4: MANTENIMIENTO (mensual)
 
 ---
 
-### 15.5 Propuesta de Pago: Mes Vencido
+### 15.5 Modalidad de Pago: Horas Reales Trabajadas
 
-#### Modalidad
+#### Cómo funciona
 
-El trabajo se paga **mes vencido**. El total de implementación (146 hs) se divide en 2 meses:
+1. **Al final de cada fase**, se reportan las horas reales trabajadas
+2. **Se factura** por las horas efectivamente trabajadas × tarifa hora
+3. **Sin sorpresas:** El cliente recibe el detalle de horas antes de pagar
 
-| Mes | Trabajo realizado                        | Horas  | Pago (fin de mes)  |
-|-----|------------------------------------------|--------|-------------------|
-| 1   | Fase 1 (carga datos) + inicio Fase 2     | 73 hs  | $2.920.000        |
-| 2   | Fin Fase 2 + Fase 3 (producción)         | 73 hs  | $2.920.000        |
-|     | **TOTAL**                                | 146 hs | **$5.840.000**    |
+#### Estimación de pagos (referencia)
 
-#### Flujo de pagos
+> **Nota:** Estos montos son estimaciones. El pago real será por horas trabajadas.
+
+| Fase   | Trabajo                       | Horas estimadas | Pago estimado  |
+|--------|-------------------------------|-----------------|----------------|
+| Fase 1 | Carga de datos                | ~122 hs         | ~$4.880.000    |
+| Fase 2 | Prueba piloto                 | ~12 hs          | ~$480.000      |
+| Fase 3 | Implementación/Producción     | ~12 hs          | ~$480.000      |
+|        | **TOTAL ESTIMADO**            | **~146 hs**     | **~$5.840.000**|
+
+#### Flujo de trabajo y facturación
 
 ```
-MES 1                              MES 2                              MES 3...
-├─────────────────────────────────┼─────────────────────────────────┼────────
-│                                 │                                 │
-│  Trabajo Fase 1 + inicio F2     │  Trabajo Fase 2 + Fase 3        │  Mantenimiento
-│                                 │                                 │
-│                            PAGO 1                            PAGO 2    ABONO
-│                         $2.920.000                        $2.920.000  $320.000/mes
+FASE 1 (4 semanas)           FASE 2 (2 sem)    FASE 3 (2 sem)    FASE 4...
+├────────────────────────────┼─────────────────┼─────────────────┼────────
+│                            │                 │                 │
+│  Carga de datos            │  Piloto         │  Producción     │  Mantenimiento
+│                            │                 │                 │
+│                       PAGO 1            PAGO 2            PAGO 3    ABONO
+│                  (horas reales     (horas reales     (horas reales  mensual
+│                   × $40.000)        × $40.000)        × $40.000)
 ```
+
+#### Reporte de horas
+
+Al finalizar cada fase, Hernán entrega:
+
+| Dato                     | Ejemplo                                   |
+|--------------------------|-------------------------------------------|
+| Período                  | 1 feb - 28 feb 2026                       |
+| Horas trabajadas         | 118 hs                                    |
+| Detalle por tarea        | Extracción: 85 hs, Validación: 20 hs, etc.|
+| Obras sociales cargadas  | 180 de 200                                |
+| Monto a facturar         | 118 × $40.000 = $4.720.000                |
 
 #### Condiciones
 
-1. **Pago mes vencido:** Se factura al cierre de cada mes por el trabajo realizado
-2. **Prorrateado:** Si el primer mes tiene más carga, se balancea en el segundo
-3. **OS pendientes:** Si no se completan todas las OS en los 2 meses, se agregan en el soporte mensual sin costo extra (dentro de las 8 hs)
-4. **Inicio mantenimiento:** A partir del mes 3, comienza el abono mensual de $320.000
+1. **Pago por horas reales:** Se factura únicamente por el trabajo efectivamente realizado
+2. **Transparencia:** Detalle de horas disponible antes de cada facturación
+3. **Sin penalidad:** Si una fase toma menos horas, se paga menos
+4. **Ajuste automático:** Si hay más trabajo del estimado, las horas adicionales se facturan a la misma tarifa
+5. **Mantenimiento:** A partir de la Fase 4, se establece un abono mensual estimado en ~8 hs/mes (~$320.000)
 
 ---
 
@@ -922,25 +977,19 @@ El bot base incluye todo lo documentado. Las siguientes funcionalidades **NO est
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-### 15.9 Modelos de Contratación
+### 15.9 Modelo de Contratación Seleccionado
 
-| Modelo           | Descripción                      | Mejor para             |
-|------------------|----------------------------------|------------------------|
-| **A) Por hora**  | Se factura horas trabajadas      | Proyectos flexibles    |
-| **B) Por OS**    | Precio fijo por cada OS cargada  | Presupuesto predecible |
-| **C) Paquete**   | Precio cerrado por fase          | Claridad total         |
-| **D) Mixto**     | Fijo por fase + variable por OS  | Balance                |
+**Este proyecto se contrata bajo el modelo Tiempo y Materiales (T&M).**
 
-#### Ejemplo Modelo D (Mixto):
+| Aspecto                  | Detalle                                            |
+|--------------------------|----------------------------------------------------|
+| **Modalidad**            | Horas reales trabajadas × tarifa hora ($40.000)    |
+| **Estimación inicial**   | ~146 horas para implementación completa            |
+| **Facturación**          | Al finalizar cada fase, por horas trabajadas       |
+| **Flexibilidad**         | Ajuste automático si el alcance cambia             |
+| **Riesgo**               | Cliente asume variaciones sobre la estimación      |
 
-| Concepto                    | Precio   |
-|-----------------------------|----------|
-| Fase 1 fijo (setup, piloto) | $XXX     |
-| Por cada OS cargada         | $YY      |
-| Fase 2 (producción)         | $ZZZ     |
-| Mantenimiento mensual       | $WW/mes  |
-
-*Los valores se definen según tarifa hora de Hernán.*
+Ver sección 15.4 para detalles completos del modelo T&M.
 
 ### 15.10 Condiciones para el Éxito
 
