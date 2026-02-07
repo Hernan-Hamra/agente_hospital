@@ -67,6 +67,74 @@ Según propuesta final, falta implementar:
 
 ---
 
+## Flujo de Trabajo Recomendado
+
+### Fase de desarrollo y carga de datos (PC local con Claude Code)
+
+```
+1. Recibir documentos de OS (PDFs, mails, manuales)
+2. OCR con Google Vision → textos limpios
+3. Pegar texto a Claude Code → genera JSON estructurado
+4. Validar datos con supervisor
+5. Cargar JSONs validados a SQLite local
+6. Testear bot en local
+7. Cuando está listo → subir .db al servidor
+```
+
+### Fase de producción (servidor GP)
+
+```
+1. git pull (actualiza código si hay cambios)
+   - o scp obras_sociales.db al servidor (solo datos)
+2. systemctl restart bot_admision
+3. Verificar que responde en Telegram
+```
+
+### Actualización en producción
+
+#### Cambios de código (vía GitHub)
+
+```bash
+# Desde tu PC
+git add . && git commit -m "fix: descripción" && git push
+
+# En el servidor (un solo comando)
+ssh usuario@servidor "cd /opt/bot_admision && git pull && sudo systemctl restart bot_admision"
+```
+
+#### Solo datos (sin GitHub)
+
+```bash
+# Subir .db directamente
+scp escenario_2/data/obras_sociales.db usuario@servidor:/opt/bot_admision/escenario_2/data/
+
+# Reiniciar
+ssh usuario@servidor "sudo systemctl restart bot_admision"
+```
+
+#### ¿Incluir .db en Git?
+
+| Opción | Pro | Contra |
+|--------|-----|--------|
+| **Sí (recomendado)** | Un solo `git pull` actualiza todo | Repo más pesado (~1-5 MB) |
+| **No** | Repo liviano | Dos pasos (pull + scp) |
+
+**Decisión:** Incluir .db en Git. Para ~200 OS el archivo es pequeño y simplifica el deploy.
+
+### Token de Telegram
+
+| Situación | Acción |
+|-----------|--------|
+| Bot de prueba/dev actual | Podés usar el mismo token |
+| Querés separar dev/prod | Crear nuevo bot con @BotFather |
+| Bot ya en uso en otro proyecto | Crear nuevo bot |
+
+**Crear bot nuevo (2 min):**
+1. Telegram → @BotFather → `/newbot`
+2. Nombre: `Bot Admision GP`
+3. Username: `admision_gp_bot` (debe ser único)
+4. Copiar token al `.env`
+
 ---
 
 ## Deploy del Proyecto
