@@ -22,50 +22,54 @@
 
 ---
 
-#### 2. Restricciones (solo supervisores)
+#### 2. Restricciones (requieren PIN de supervisor)
 
 **Propósito:** Permitir al supervisor marcar una OS con problemas (deuda, convenio suspendido, etc.)
 
 | Función | Comando | Estado |
 |---------|---------|--------|
-| Agregar restricción | `/restriccion OS TIPO "MENSAJE" [PERMITIDOS]` | ✅ |
-| Quitar restricción | `/quitar_restriccion OS [TIPO]` | ✅ |
-| Listar restricciones | `/restricciones [OS]` | ✅ |
-| Ver mi ID | `/mi_id` | ✅ |
+| Agregar restricción | `/restriccion:PIN OS TIPO "MENSAJE" [PERMITIDOS]` | ✅ |
+| Quitar restricción | `/quitar_restriccion:PIN OS [TIPO]` | ✅ |
+| Listar restricciones | `/restricciones:PIN [OS]` | ✅ |
+| Ver mi ID | `/mi_id` (sin PIN) | ✅ |
+
+**Seguridad:** El mensaje con PIN se borra automáticamente después de procesarlo.
 
 **Tipos de restricción:**
 - `falta_pago` - OS con deuda
 - `convenio_suspendido` - Convenio pausado
 - `cupo_agotado` - Sin cupo disponible
 
-**Ejemplos de uso:**
+**Ejemplos de uso (PIN: 1234):**
 
 ```
 # 1. Agregar restricción - solo permite guardia
-/restriccion ENSALUD falta_pago "Pagos pendientes. Solo GUARDIA." guardia
+/restriccion:1234 ENSALUD falta_pago "Pagos pendientes. Solo GUARDIA." guardia
 
 # 2. Agregar restricción - bloquea todo
-/restriccion ASI convenio_suspendido "Convenio suspendido hasta nuevo aviso."
+/restriccion:1234 ASI convenio_suspendido "Convenio suspendido hasta nuevo aviso."
 
 # 3. Ver restricciones activas
-/restricciones
+/restricciones:1234
 
 # 4. Ver restricciones de una OS
-/restricciones ENSALUD
+/restricciones:1234 ENSALUD
 
 # 5. Quitar restricción específica
-/quitar_restriccion ENSALUD falta_pago
+/quitar_restriccion:1234 ENSALUD falta_pago
 
 # 6. Quitar TODAS las restricciones de una OS
-/quitar_restriccion ENSALUD
+/quitar_restriccion:1234 ENSALUD
 ```
 
-**Configuración de supervisores (.env):**
+**Configuración (.env):**
 ```bash
-TELEGRAM_SUPERVISOR_IDS=123456789,987654321
-```
+# PIN de supervisor (cualquiera con este PIN puede ejecutar comandos)
+SUPERVISOR_PIN=1234
 
-Para obtener tu ID: escribir `/mi_id` al bot.
+# IDs de supervisores (opcional - estos usuarios NO necesitan PIN)
+TELEGRAM_SUPERVISOR_IDS=
+```
 
 ---
 
@@ -102,25 +106,29 @@ Bot: ✅ Reporte #42 enviado. Gracias por ayudar a mantener la info actualizada.
 # 1. Configurar .env
 cd escenario_2
 cp .env.example .env
-nano .env  # Agregar token y tu ID como supervisor
+nano .env  # Agregar token y PIN (ej: SUPERVISOR_PIN=1234)
 
 # 2. Correr el bot
 python escenario_2/bot.py
 ```
 
-#### Secuencia de prueba:
+#### Secuencia de prueba (PIN: 1234):
 
 - [ ] **Paso 1:** Enviar `/start` → debe mostrar bienvenida
-- [ ] **Paso 2:** Enviar `/help` → debe mostrar comandos
+- [ ] **Paso 2:** Enviar `/help` → debe mostrar comandos (incluye formato con PIN)
 - [ ] **Paso 3:** Enviar `/mi_id` → debe mostrar tu ID de Telegram
 - [ ] **Paso 4:** Enviar `ambulatorio ensalud` → debe mostrar info
 - [ ] **Paso 5:** Enviar `internacion asi` → debe mostrar mail y plazo denuncia
 - [ ] **Paso 6:** Enviar `coseguros ensalud` → debe mostrar planes y valores
-- [ ] **Paso 7:** Enviar `/restriccion ENSALUD falta_pago "Solo guardia" guardia`
+- [ ] **Paso 7:** Enviar `/restriccion:1234 ENSALUD falta_pago "Solo guardia" guardia`
+  - → El mensaje debe borrarse automáticamente
+  - → Debe responder "✅ Restricción agregada"
 - [ ] **Paso 8:** Enviar `internacion ensalud` → debe mostrar alerta ⛔
-- [ ] **Paso 9:** Enviar `/restricciones` → debe listar la restricción
-- [ ] **Paso 10:** Enviar `/quitar_restriccion ENSALUD`
+- [ ] **Paso 9:** Enviar `/restricciones:1234` → debe listar la restricción
+- [ ] **Paso 10:** Enviar `/quitar_restriccion:1234 ENSALUD`
 - [ ] **Paso 11:** Enviar `internacion ensalud` → ya no debe mostrar alerta
+- [ ] **Paso 12:** Enviar `/restriccion:9999 ENSALUD falta_pago "test"` (PIN incorrecto)
+  - → Debe borrar mensaje y responder "⛔ PIN incorrecto"
 
 ---
 
@@ -131,15 +139,15 @@ python escenario_2/bot.py
 | **Consultas** | 5 tipos de ingreso | ✅ 100% | - |
 | **Consultas** | Sinónimos | ✅ 100% | - |
 | **Restricciones** | Agregar/quitar/listar | ✅ 100% | - |
-| **Restricciones** | Control por ID supervisor | ✅ 100% | - |
+| **Seguridad** | PIN de supervisor | ✅ 100% | - |
+| **Seguridad** | Borrado automático de mensaje | ✅ 100% | - |
 | **Reportes** | `/reportar` usuario | ❌ 0% | Alta |
 | **Reportes** | Tabla logs consultas | ❌ 0% | Alta |
 | **Reportes** | `/reporte:PIN` semanal | ❌ 0% | Media |
 | **Reportes** | Generación CSV | ❌ 0% | Media |
 | **Reportes** | Notificación mail | ❌ 0% | Baja |
-| **Seguridad** | PIN en lugar de IDs | ❌ 0% | Baja |
 
-**Para producción completa faltan ~9 horas de desarrollo.**
+**Para producción completa faltan ~7 horas de desarrollo.**
 
 ---
 
