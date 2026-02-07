@@ -1,5 +1,148 @@
 # Notas de Implementación - Escenario 2
 
+## Guía de Pruebas Manuales
+
+### Funcionalidades del Sistema
+
+#### 1. Consultas básicas (todos los usuarios)
+
+| Función | Comando | Ejemplo | Estado |
+|---------|---------|---------|--------|
+| Ambulatorio | `ambulatorio [OS]` | `ambulatorio ensalud` | ✅ |
+| Internación | `internacion [OS]` | `internacion asi` | ✅ |
+| Guardia | `guardia [OS]` | `guardia iosfa` | ✅ |
+| Traslados | `traslados [OS]` | `traslados ensalud` | ✅ |
+| Coseguros | `coseguros [OS]` | `coseguros ensalud` | ✅ |
+
+**Sinónimos soportados:**
+- "turno", "turnos", "consulta" → ambulatorio
+- "internado", "cama", "cirugía" → internación
+- "urgencia", "emergencia" → guardia
+- "derivación", "ambulancia" → traslados
+
+---
+
+#### 2. Restricciones (solo supervisores)
+
+**Propósito:** Permitir al supervisor marcar una OS con problemas (deuda, convenio suspendido, etc.)
+
+| Función | Comando | Estado |
+|---------|---------|--------|
+| Agregar restricción | `/restriccion OS TIPO "MENSAJE" [PERMITIDOS]` | ✅ |
+| Quitar restricción | `/quitar_restriccion OS [TIPO]` | ✅ |
+| Listar restricciones | `/restricciones [OS]` | ✅ |
+| Ver mi ID | `/mi_id` | ✅ |
+
+**Tipos de restricción:**
+- `falta_pago` - OS con deuda
+- `convenio_suspendido` - Convenio pausado
+- `cupo_agotado` - Sin cupo disponible
+
+**Ejemplos de uso:**
+
+```
+# 1. Agregar restricción - solo permite guardia
+/restriccion ENSALUD falta_pago "Pagos pendientes. Solo GUARDIA." guardia
+
+# 2. Agregar restricción - bloquea todo
+/restriccion ASI convenio_suspendido "Convenio suspendido hasta nuevo aviso."
+
+# 3. Ver restricciones activas
+/restricciones
+
+# 4. Ver restricciones de una OS
+/restricciones ENSALUD
+
+# 5. Quitar restricción específica
+/quitar_restriccion ENSALUD falta_pago
+
+# 6. Quitar TODAS las restricciones de una OS
+/quitar_restriccion ENSALUD
+```
+
+**Configuración de supervisores (.env):**
+```bash
+TELEGRAM_SUPERVISOR_IDS=123456789,987654321
+```
+
+Para obtener tu ID: escribir `/mi_id` al bot.
+
+---
+
+#### 3. Reportar errores (todos los usuarios)
+
+**Propósito:** Que cualquier usuario reporte datos incorrectos o faltantes.
+
+| Función | Comando | Estado |
+|---------|---------|--------|
+| Reportar problema | `/reportar "descripción"` | ❌ NO IMPLEMENTADO |
+
+**Comportamiento esperado (cuando se implemente):**
+```
+Usuario: /reportar "El mail de ENSALUD cambió a nuevo@ensalud.org"
+Bot: ✅ Reporte #42 enviado. Gracias por ayudar a mantener la info actualizada.
+```
+
+---
+
+#### 4. Reportes y métricas (supervisores)
+
+| Función | Comando | Estado |
+|---------|---------|--------|
+| Reporte semanal | `/reporte:PIN` | ❌ NO IMPLEMENTADO |
+| Ver métricas | (automático en reporte) | ❌ NO IMPLEMENTADO |
+
+---
+
+### Checklist de Pruebas
+
+#### Antes de la demo:
+
+```bash
+# 1. Configurar .env
+cd escenario_2
+cp .env.example .env
+nano .env  # Agregar token y tu ID como supervisor
+
+# 2. Correr el bot
+python escenario_2/bot.py
+```
+
+#### Secuencia de prueba:
+
+- [ ] **Paso 1:** Enviar `/start` → debe mostrar bienvenida
+- [ ] **Paso 2:** Enviar `/help` → debe mostrar comandos
+- [ ] **Paso 3:** Enviar `/mi_id` → debe mostrar tu ID de Telegram
+- [ ] **Paso 4:** Enviar `ambulatorio ensalud` → debe mostrar info
+- [ ] **Paso 5:** Enviar `internacion asi` → debe mostrar mail y plazo denuncia
+- [ ] **Paso 6:** Enviar `coseguros ensalud` → debe mostrar planes y valores
+- [ ] **Paso 7:** Enviar `/restriccion ENSALUD falta_pago "Solo guardia" guardia`
+- [ ] **Paso 8:** Enviar `internacion ensalud` → debe mostrar alerta ⛔
+- [ ] **Paso 9:** Enviar `/restricciones` → debe listar la restricción
+- [ ] **Paso 10:** Enviar `/quitar_restriccion ENSALUD`
+- [ ] **Paso 11:** Enviar `internacion ensalud` → ya no debe mostrar alerta
+
+---
+
+### Estado de implementación
+
+| Categoría | Feature | Estado | Prioridad |
+|-----------|---------|--------|-----------|
+| **Consultas** | 5 tipos de ingreso | ✅ 100% | - |
+| **Consultas** | Sinónimos | ✅ 100% | - |
+| **Restricciones** | Agregar/quitar/listar | ✅ 100% | - |
+| **Restricciones** | Control por ID supervisor | ✅ 100% | - |
+| **Reportes** | `/reportar` usuario | ❌ 0% | Alta |
+| **Reportes** | Tabla logs consultas | ❌ 0% | Alta |
+| **Reportes** | `/reporte:PIN` semanal | ❌ 0% | Media |
+| **Reportes** | Generación CSV | ❌ 0% | Media |
+| **Reportes** | Notificación mail | ❌ 0% | Baja |
+| **Seguridad** | PIN en lugar de IDs | ❌ 0% | Baja |
+
+**Para producción completa faltan ~9 horas de desarrollo.**
+
+---
+
 ## Pipeline de Extracción de Datos (futuro)
 
 ### Decisión: Manual + OCR (sin API extra)
