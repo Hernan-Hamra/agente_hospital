@@ -379,7 +379,8 @@ async def restriccion_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     )
 
     if success:
-        response = f"✅ Restricción agregada:\n\n"
+        response = "👤 Acción de supervisor\n\n"
+        response += f"✅ Restricción agregada:\n\n"
         response += f"• Obra social: {obra_social}\n"
         response += f"• Tipo: {tipo_restriccion}\n"
         response += f"• Mensaje: {mensaje}\n"
@@ -390,9 +391,10 @@ async def restriccion_command(update: Update, context: ContextTypes.DEFAULT_TYPE
 
         logger.info(f"[Supervisor {update.effective_user.id}] Restricción agregada: {obra_social} - {tipo_restriccion}")
     else:
-        response = f"❌ Error: Obra social '{obra_social}' no encontrada."
+        response = "👤 Acción de supervisor\n\n"
+        response += f"❌ Error: Obra social '{obra_social}' no encontrada."
 
-    await context.bot.send_message(chat_id, response)
+    await context.bot.send_message(chat_id, response, parse_mode='Markdown')
 
 
 @supervisor_required
@@ -425,16 +427,18 @@ async def quitar_restriccion_command(update: Update, context: ContextTypes.DEFAU
     count = bot.engine.remove_restriccion(obra_social, tipo_restriccion)
 
     if count > 0:
-        response = f"✅ Se quitaron {count} restricción(es) de {obra_social}"
+        response = "👤 Acción de supervisor\n\n"
+        response += f"✅ Se quitaron {count} restricción(es) de {obra_social}"
         if tipo_restriccion:
             response += f" (tipo: {tipo_restriccion})"
         logger.info(f"[Supervisor {update.effective_user.id}] Restricciones removidas: {obra_social} x{count}")
     else:
-        response = f"ℹ️ No había restricciones activas para {obra_social}"
+        response = "👤 Acción de supervisor\n\n"
+        response += f"ℹ️ No había restricciones activas para {obra_social}"
         if tipo_restriccion:
             response += f" del tipo {tipo_restriccion}"
 
-    await context.bot.send_message(chat_id, response)
+    await context.bot.send_message(chat_id, response, parse_mode='Markdown')
 
 
 @supervisor_required
@@ -455,14 +459,18 @@ async def listar_restricciones_command(update: Update, context: ContextTypes.DEF
     restricciones = bot.engine.list_restricciones(obra_social)
 
     if not restricciones:
+        response = "👤 Acción de supervisor\n\n"
         if obra_social:
-            response = f"ℹ️ No hay restricciones activas para {obra_social}"
+            response += f"ℹ️ No hay restricciones activas para {obra_social}"
         else:
-            response = "ℹ️ No hay restricciones activas"
+            response += "ℹ️ No hay restricciones activas"
     else:
-        response = "📋 *RESTRICCIONES ACTIVAS*\n\n"
+        response = "👤 Acción de supervisor\n\n"
+        response += "📋 *RESTRICCIONES ACTIVAS*\n\n"
         for r in restricciones:
-            response += f"⛔ *{r['obra_social_codigo']}* - {r['tipo_restriccion']}\n"
+            # Escapar underscores para Markdown
+            tipo = r['tipo_restriccion'].replace('_', '\\_')
+            response += f"⛔ *{r['obra_social_codigo']}* - {tipo}\n"
             response += f"   {r['mensaje']}\n"
             if r['tipos_permitidos']:
                 response += f"   Solo permite: {r['tipos_permitidos']}\n"
@@ -487,8 +495,9 @@ async def mi_id_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     """Punto de entrada principal."""
-    # Cargar variables de entorno
-    load_dotenv()
+    # Cargar variables de entorno desde la raíz del proyecto
+    env_path = Path(__file__).parent.parent / ".env"
+    load_dotenv(env_path)
 
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:

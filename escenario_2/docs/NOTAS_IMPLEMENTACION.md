@@ -98,37 +98,85 @@ Bot: ✅ Reporte #42 enviado. Gracias por ayudar a mantener la info actualizada.
 
 ---
 
-### Checklist de Pruebas
+### Demo para Patricia (2026-02-07)
 
-#### Antes de la demo:
+#### Comandos para copiar y pegar en Telegram:
+
+**1. Inicio y consultas básicas:**
+```
+/start
+```
+```
+/mi_id
+```
+```
+ambulatorio ensalud
+```
+```
+internacion ensalud
+```
+
+**2. Agregar restricción (el mensaje se borra, aparece confirmación):**
+```
+/restriccion:1234 ENSALUD falta_pago "Deuda pendiente. Solo GUARDIA autorizado." guardia
+```
+
+**3. Verificar que la restricción se aplica:**
+```
+internacion ensalud
+```
+```
+guardia ensalud
+```
+
+**4. Ver y quitar restricciones:**
+```
+/restricciones:1234
+```
+```
+/quitar_restriccion:1234 ENSALUD
+```
+
+**5. Verificar que se quitó:**
+```
+internacion ensalud
+```
+
+**6. Probar PIN incorrecto (borra mensaje + error):**
+```
+/restriccion:9999 ENSALUD falta_pago "test"
+```
+
+---
+
+#### Resultados esperados:
+
+| #  | Comando                                  | Resultado                                    |
+|----|------------------------------------------|----------------------------------------------|
+| 1  | `/start`                                 | Bienvenida con lista de OS                   |
+| 2  | `/mi_id`                                 | Tu ID de Telegram                            |
+| 3  | `ambulatorio ensalud`                    | Info normal                                  |
+| 4  | `internacion ensalud`                    | Info normal                                  |
+| 5  | `/restriccion:1234 ENSALUD...`           | Mensaje se borra + "👤 Acción de supervisor" |
+| 6  | `internacion ensalud`                    | ⛔ ATENCIÓN + info                           |
+| 7  | `guardia ensalud`                        | Info normal (permitido)                      |
+| 8  | `/restricciones:1234`                    | Lista restricción activa                     |
+| 9  | `/quitar_restriccion:1234 ENSALUD`       | Confirma que se quitó                        |
+| 10 | `internacion ensalud`                    | Info normal (sin alerta)                     |
+| 11 | `/restriccion:9999...`                   | Mensaje se borra + "⛔ PIN incorrecto"       |
+
+---
+
+### Checklist técnico (antes de demo)
 
 ```bash
-# 1. Configurar .env
-cd escenario_2
-cp .env.example .env
-nano .env  # Agregar token y PIN (ej: SUPERVISOR_PIN=1234)
-
-# 2. Correr el bot
+# Desde la raíz del proyecto
 python escenario_2/bot.py
 ```
 
-#### Secuencia de prueba (PIN: 1234):
-
-- [ ] **Paso 1:** Enviar `/start` → debe mostrar bienvenida
-- [ ] **Paso 2:** Enviar `/help` → debe mostrar comandos (incluye formato con PIN)
-- [ ] **Paso 3:** Enviar `/mi_id` → debe mostrar tu ID de Telegram
-- [ ] **Paso 4:** Enviar `ambulatorio ensalud` → debe mostrar info
-- [ ] **Paso 5:** Enviar `internacion asi` → debe mostrar mail y plazo denuncia
-- [ ] **Paso 6:** Enviar `coseguros ensalud` → debe mostrar planes y valores
-- [ ] **Paso 7:** Enviar `/restriccion:1234 ENSALUD falta_pago "Solo guardia" guardia`
-  - → El mensaje debe borrarse automáticamente
-  - → Debe responder "✅ Restricción agregada"
-- [ ] **Paso 8:** Enviar `internacion ensalud` → debe mostrar alerta ⛔
-- [ ] **Paso 9:** Enviar `/restricciones:1234` → debe listar la restricción
-- [ ] **Paso 10:** Enviar `/quitar_restriccion:1234 ENSALUD`
-- [ ] **Paso 11:** Enviar `internacion ensalud` → ya no debe mostrar alerta
-- [ ] **Paso 12:** Enviar `/restriccion:9999 ENSALUD falta_pago "test"` (PIN incorrecto)
-  - → Debe borrar mensaje y responder "⛔ PIN incorrecto"
+Verificar en logs:
+- `PIN: configurado`
+- `Application started`
 
 ---
 
