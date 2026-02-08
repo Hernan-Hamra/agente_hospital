@@ -96,15 +96,20 @@ class QueryEngine:
         restricciones = cursor.fetchall()
 
         for rest in restricciones:
-            # Verificar si este tipo está bloqueado
             tipos_bloqueados = rest['tipos_bloqueados']
             tipos_permitidos = rest['tipos_permitidos']
 
+            # Si no hay ni bloqueados ni permitidos → bloquea TODO
+            if not tipos_bloqueados and not tipos_permitidos:
+                return dict(rest)
+
+            # Si hay lista de bloqueados, verificar si este tipo está
             if tipos_bloqueados:
                 bloqueados = [t.strip() for t in tipos_bloqueados.split(',')]
                 if tipo_ingreso in bloqueados:
                     return dict(rest)
 
+            # Si hay lista de permitidos, bloquear los que NO están
             if tipos_permitidos:
                 permitidos = [t.strip() for t in tipos_permitidos.split(',')]
                 if tipo_ingreso not in permitidos:

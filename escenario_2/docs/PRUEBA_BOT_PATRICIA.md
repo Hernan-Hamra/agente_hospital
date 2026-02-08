@@ -1,33 +1,24 @@
 # Prueba del Bot de Admisión con Patricia
 
 **Fecha:** 2026-02-07
-**Bot:** @AgentHospitalarioBot (o el nombre que tenga)
+**Bot:** @GrupoPediatricoBot
 **PIN de prueba:** 1234
 
 ---
 
-## Paso 1: Iniciar el bot
+## Parte 1: Consultas (usuario normal)
 
-Enviar en Telegram:
+### Paso 1: Iniciar el bot
+
 ```
 /start
 ```
 
-**Esperado:** Mensaje de bienvenida con lista de obras sociales (ENSALUD, ASI, IOSFA)
+**Esperado:** Bienvenida con lista de obras sociales (ENSALUD, ASI, IOSFA)
 
 ---
 
-## Paso 2: Ver tu ID
-
-```
-/mi_id
-```
-
-**Esperado:** Muestra tu ID de Telegram, username y nombre
-
----
-
-## Paso 3: Consulta básica
+### Paso 2: Consulta ambulatorio
 
 ```
 ambulatorio ensalud
@@ -37,69 +28,101 @@ ambulatorio ensalud
 
 ---
 
-## Paso 4: Otra consulta
+### Paso 3: Consulta internación
 
 ```
-internacion ensalud
+internacion asi
 ```
 
-**Esperado:** Info de internación (mail denuncia, plazo 24hs, etc.)
+**Esperado:** Info de internación (mail denuncia, plazo 24hs)
 
 ---
 
-## Paso 5: Agregar restricción (SUPERVISOR)
+### Paso 4: Consulta guardia
 
 ```
-/restriccion:1234 ENSALUD falta_pago "Deuda pendiente. Solo GUARDIA autorizado." guardia
+guardia iosfa
+```
+
+**Esperado:** Info de guardia (documentación, coseguro)
+
+---
+
+## Parte 2: Restricciones (supervisor)
+
+### Formato del comando
+
+```
+/restriccion:PIN OBRA_SOCIAL TIPO "MENSAJE" [PERMITIDOS]
+```
+
+Donde:
+
+| Parámetro      | Valores posibles                                      | Obligatorio |
+|----------------|-------------------------------------------------------|-------------|
+| PIN            | 1234 (el PIN configurado)                             | Sí          |
+| OBRA_SOCIAL    | ENSALUD, ASI, IOSFA                                   | Sí          |
+| TIPO           | falta_pago, convenio_suspendido, cupo_agotado         | Sí          |
+| "MENSAJE"      | Texto libre entre comillas                            | Sí          |
+| PERMITIDOS     | ambulatorio, internacion, guardia, traslados (o nada) | No          |
+
+**IMPORTANTE:** Si no se pone PERMITIDOS, se bloquean TODOS los tipos de ingreso.
+
+---
+
+### Paso 5: Agregar restricción (solo permite guardia)
+
+```
+/restriccion:1234 ENSALUD falta_pago "Deuda pendiente. Solo guardia autorizado." guardia
 ```
 
 **Esperado:**
-- Tu mensaje DESAPARECE (se borra automáticamente)
-- Aparece: "👤 Acción de supervisor" + confirmación
+- Tu mensaje DESAPARECE (se borra automáticamente para ocultar el PIN)
+- Aparece: "👤 Acción de supervisor" + "Solo permite: guardia"
 
 ---
 
-## Paso 6: Verificar restricción aplicada
+### Paso 6: Verificar que internación está bloqueada
 
 ```
 internacion ensalud
 ```
 
-**Esperado:** Muestra ⛔ ATENCIÓN al inicio del mensaje
+**Esperado:** ⛔ ATENCIÓN al inicio + info de internación
 
 ---
 
-## Paso 7: Consulta permitida
+### Paso 7: Verificar que guardia está permitida
 
 ```
 guardia ensalud
 ```
 
-**Esperado:** Info normal (guardia está permitido)
+**Esperado:** Info normal SIN alerta (guardia está permitida)
 
 ---
 
-## Paso 8: Ver restricciones activas
+### Paso 8: Ver restricciones activas
 
 ```
 /restricciones:1234
 ```
 
-**Esperado:** Lista con la restricción de ENSALUD
+**Esperado:** Lista mostrando la restricción de ENSALUD
 
 ---
 
-## Paso 9: Quitar restricción
+### Paso 9: Quitar restricción de ENSALUD
 
 ```
 /quitar_restriccion:1234 ENSALUD
 ```
 
-**Esperado:** Confirmación de que se quitó
+**Esperado:** "Se quitaron 1 restricción(es) de ENSALUD"
 
 ---
 
-## Paso 10: Verificar que se quitó
+### Paso 10: Verificar que se quitó
 
 ```
 internacion ensalud
@@ -109,7 +132,40 @@ internacion ensalud
 
 ---
 
-## Paso 11: Probar PIN incorrecto
+### Paso 11: Restricción que bloquea TODO
+
+```
+/restriccion:1234 ASI convenio_suspendido "Convenio suspendido hasta nuevo aviso"
+```
+
+**Esperado:** "Bloquea: TODOS los ingresos" (porque no se puso tipo permitido)
+
+---
+
+### Paso 12: Verificar bloqueo total
+
+```
+internacion asi
+```
+```
+guardia asi
+```
+
+**Esperado:** Ambos muestran ⛔ ATENCIÓN
+
+---
+
+### Paso 13: Quitar y limpiar
+
+```
+/quitar_restriccion:1234 ASI
+```
+
+**Esperado:** Se quitó la restricción de ASI
+
+---
+
+### Paso 14: Probar PIN incorrecto
 
 ```
 /restriccion:9999 ENSALUD falta_pago "test"
@@ -117,25 +173,28 @@ internacion ensalud
 
 **Esperado:**
 - Mensaje se borra
-- Aparece: "⛔ PIN incorrecto"
+- Aparece: "👤 Acción de supervisor" + "⛔ PIN incorrecto"
 
 ---
 
 ## Resumen de resultados
 
-| Paso | Descripción                | OK? |
-|------|----------------------------|-----|
-| 1    | /start                     | [ ] |
-| 2    | /mi_id                     | [ ] |
-| 3    | ambulatorio ensalud        | [ ] |
-| 4    | internacion ensalud        | [ ] |
-| 5    | Agregar restricción        | [ ] |
-| 6    | Ver alerta ⛔              | [ ] |
-| 7    | guardia (permitido)        | [ ] |
-| 8    | /restricciones             | [ ] |
-| 9    | Quitar restricción         | [ ] |
-| 10   | Sin alerta                 | [ ] |
-| 11   | PIN incorrecto             | [ ] |
+| Paso | Descripción                    | OK? |
+|------|--------------------------------|-----|
+| 1    | /start                         | [ ] |
+| 2    | ambulatorio ensalud            | [ ] |
+| 3    | internacion asi                | [ ] |
+| 4    | guardia iosfa                  | [ ] |
+| 5    | Agregar restricción (guardia)  | [ ] |
+| 6    | internacion bloqueada ⛔       | [ ] |
+| 7    | guardia permitida              | [ ] |
+| 8    | /restricciones                 | [ ] |
+| 9    | Quitar restricción ENSALUD     | [ ] |
+| 10   | Sin alerta                     | [ ] |
+| 11   | Restricción bloquea TODO       | [ ] |
+| 12   | Ambos bloqueados ⛔            | [ ] |
+| 13   | Quitar restricción ASI         | [ ] |
+| 14   | PIN incorrecto                 | [ ] |
 
 ---
 

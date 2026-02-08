@@ -146,7 +146,7 @@ async def validate_supervisor(update: Update, context: ContextTypes.DEFAULT_TYPE
             await update.message.delete()
         except Exception:
             pass
-        await context.bot.send_message(chat_id, "⛔ PIN incorrecto.")
+        await context.bot.send_message(chat_id, "👤 Acción de supervisor\n\n⛔ PIN incorrecto.")
         logger.warning(f"Usuario {user_id} usó PIN incorrecto")
     else:
         # No es supervisor por ID y no usó PIN
@@ -350,8 +350,8 @@ async def restriccion_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     obra_social = args[0].upper()
     tipo_restriccion = args[1].lower()
 
-    # Extraer texto entre comillas
-    match = re.search(r'"([^"]+)"', full_text)
+    # Extraer texto entre comillas (soporta comillas ASCII y smart quotes de Telegram)
+    match = re.search(r'["""]([^"""]+)["""]', full_text)
     if not match:
         await context.bot.send_message(
             chat_id,
@@ -363,9 +363,9 @@ async def restriccion_command(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     mensaje = match.group(1)
 
-    # Tipos permitidos (opcional, después de las comillas)
+    # Tipos permitidos (opcional, después de las comillas de cierre)
     tipos_permitidos = None
-    after_quotes = full_text.split('"')[-1].strip()
+    after_quotes = re.split(r'["""]', full_text)[-1].strip()
     if after_quotes:
         tipos_permitidos = after_quotes.replace(" ", "")
 
@@ -382,7 +382,7 @@ async def restriccion_command(update: Update, context: ContextTypes.DEFAULT_TYPE
         response = "👤 Acción de supervisor\n\n"
         response += f"✅ Restricción agregada:\n\n"
         response += f"• Obra social: {obra_social}\n"
-        response += f"• Tipo: {tipo_restriccion}\n"
+        response += f"• Tipo: {tipo_restriccion.replace('_', ' ')}\n"
         response += f"• Mensaje: {mensaje}\n"
         if tipos_permitidos:
             response += f"• Solo permite: {tipos_permitidos}\n"
@@ -430,7 +430,7 @@ async def quitar_restriccion_command(update: Update, context: ContextTypes.DEFAU
         response = "👤 Acción de supervisor\n\n"
         response += f"✅ Se quitaron {count} restricción(es) de {obra_social}"
         if tipo_restriccion:
-            response += f" (tipo: {tipo_restriccion})"
+            response += f" (tipo: {tipo_restriccion.replace('_', ' ')})"
         logger.info(f"[Supervisor {update.effective_user.id}] Restricciones removidas: {obra_social} x{count}")
     else:
         response = "👤 Acción de supervisor\n\n"
@@ -468,8 +468,7 @@ async def listar_restricciones_command(update: Update, context: ContextTypes.DEF
         response = "👤 Acción de supervisor\n\n"
         response += "📋 *RESTRICCIONES ACTIVAS*\n\n"
         for r in restricciones:
-            # Escapar underscores para Markdown
-            tipo = r['tipo_restriccion'].replace('_', '\\_')
+            tipo = r['tipo_restriccion'].replace('_', ' ')
             response += f"⛔ *{r['obra_social_codigo']}* - {tipo}\n"
             response += f"   {r['mensaje']}\n"
             if r['tipos_permitidos']:
